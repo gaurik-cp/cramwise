@@ -1,0 +1,11 @@
+node_modules
+dist
+server/.env
+server/instance/
+server/.venv/
+__pycache__/
+
+# local-only leftovers
+_to_delete/
+cramwise-update.zip
+*.log
