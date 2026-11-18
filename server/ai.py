@@ -5,6 +5,10 @@ AI features, using Google's Gemini API (free tier).
     POST /api/ai/timetable   upload a timetable photo/PDF -> fixed-week blocks
     POST /api/ai/chat        ask a study doubt
     POST /api/ai/advice      tips about your current plan
+    POST /api/ai/quiz        a multiple-choice quiz on a topic
+    POST /api/ai/exams       read an exam timetable (date sheet) into exams with dates
+    POST /api/ai/syllabus    read a syllabus into subjects, units and topics
+    POST /api/ai/flashcards  make flashcards for a chapter
 
 Why does this run on the SERVER and not in the browser?
 Because the API key is a secret. Anything in the browser can be seen by
@@ -103,9 +107,9 @@ def call_gemini(parts, want_json=False, system=None):
 
 
 def today_str():
-    """Today's date in the app's timezone (India by default), so the daily
-    limit resets at midnight IST even if the server runs on UTC time."""
-    tz = ZoneInfo(os.getenv("APP_TIMEZONE", "Asia/Kolkata"))
+    """Today's date for the daily AI limit. People use Cramwise all over the
+    world, so it's UTC by default (set APP_TIMEZONE in .env to change it)."""
+    tz = ZoneInfo(os.getenv("APP_TIMEZONE", "UTC"))
     return datetime.now(tz).date().isoformat()
 
 
@@ -197,7 +201,8 @@ def read_timetable():
     return jsonify(blocks=blocks, remaining=remaining_today())
 
 
-CHAT_SYSTEM = """You are a strict but fair study tutor for a first-year Computer Science (Cybersecurity) student.
+CHAT_SYSTEM = """You are a strict but fair study tutor. The student may be at school, university or learning on their own,
+anywhere in the world: match their level and their subject.
 Explain clearly and simply, step by step, with small examples. Keep answers focused and not too long.
 If the question is not about studying, briefly steer back to studies.
 Use plain text with short paragraphs and simple lists. Do not use HTML."""
@@ -253,7 +258,7 @@ def advice():
     return jsonify(tips=tips, remaining=remaining_today())
 
 
-QUIZ_PROMPT = """Make a multiple-choice quiz for a first-year Computer Science student.
+QUIZ_PROMPT = """Make a multiple-choice quiz for a student (pitch it at the level the subject and topic suggest).
 Subject: {subject}
 Topic: {topic}
 
@@ -280,7 +285,7 @@ def quiz():
 
     use_quota()
     text = call_gemini(
-        [{"text": QUIZ_PROMPT.format(subject=subject or "Computer Science", topic=topic or "any important topic", count=count)}],
+        [{"text": QUIZ_PROMPT.format(subject=subject or "general studies", topic=topic or "any important topic", count=count)}],
         want_json=True,
     )
     # Check every question carefully: the AI's answer is untrusted input too
@@ -310,7 +315,8 @@ def quiz():
     return jsonify(questions=questions[:count], remaining=remaining_today())
 
 
-SYLLABUS_PROMPT = """You are reading a university course syllabus (it may be an image, a PDF, or pasted text).
+SYLLABUS_PROMPT = """You are reading a course syllabus from a school, college or university anywhere in the world
+(it may be an image, a PDF, or pasted text).
 Find every SUBJECT/COURSE in it and, for each, its units/modules and the topics inside each unit.
 
 Return JSON exactly like:
@@ -322,7 +328,7 @@ Rules:
 - units: in the syllabus order. If there are no units, put all topics in one unit named "Topics".
 - topics: short names (max 80 characters each), in order. Split long comma lists into separate topics.
 - Skip textbooks, references, course outcomes, credits, marks and evaluation schemes.
-- If the student says which semester/branch is theirs, only include those subjects.
+- If the student says which subjects are theirs (their year, class, course codes, section, programme...), only include those.
 - If you can't find a syllabus, return {"subjects": []}."""
 
 
@@ -352,7 +358,7 @@ def read_syllabus():
     hint = (request.form.get("hint") or "").strip()[:120]
     text = (request.form.get("text") or "").strip()
     file = request.files.get("file")
-    prompt = SYLLABUS_PROMPT + (f"\n\nThe student's semester/branch is: {hint}" if hint else "")
+    prompt = SYLLABUS_PROMPT + (f"\n\nWhich subjects are the student's: {hint}" if hint else "")
 
     if file:
         if file.mimetype not in ALLOWED_UPLOADS:
@@ -363,7 +369,7 @@ def read_syllabus():
         parts = [{"text": prompt}, {"inline_data": {"mime_type": file.mimetype, "data": base64.b64encode(raw).decode()}}]
     elif text:
         if len(text) > 60000:
-            return jsonify(error="That's a lot of text. Paste just your semester's subjects."), 413
+            return jsonify(error="That's a lot of text. Paste just your own subjects."), 413
         parts = [{"text": prompt + "\n\nSYLLABUS TEXT:\n" + text}]
     else:
         return jsonify(error="Upload the syllabus or paste its text first."), 400
@@ -377,7 +383,94 @@ def read_syllabus():
     return jsonify(subjects=subjects, remaining=remaining_today())
 
 
-FLASHCARD_PROMPT = """Make study flashcards for a first-year Computer Science student.
+EXAMS_PROMPT = """You are reading an EXAM TIMETABLE (also called a date sheet or exam schedule) from a school,
+college or university anywhere in the world. It may be an image, a PDF, or pasted text.
+Find every exam and its date (and start time if shown).
+
+Return JSON exactly like:
+{{"exams": [{{"subject": "Database Management Systems", "code": "CS 301", "date": "2026-12-21", "time": "09:30", "kind": "Final"}}]}}
+
+Rules:
+- subject: the course/subject name as written (max 60 characters). code: the course code if shown, else "".
+- date: ISO format YYYY-MM-DD. Today is {today}. If the year isn't written, use the next time that date comes after today.
+- Dates like 05/12 or 5.12 are ambiguous. The student's region is "{region}": in the US, read them month first (May 12);
+  almost everywhere else (India, the UK, Europe, Australia...) day first (5 December). If the timetable itself makes the
+  order clear (for example a day above 12, or month names), follow the timetable.
+- time: 24-hour HH:MM start time if shown. Morning/afternoon sessions without a time: use the session's start time if
+  the timetable states it anywhere, else "". If there's no time, use "".
+- kind: what the exam is if stated (Midterm, Final, Practical, Quiz...), else "".
+- If the student says which exams are theirs (their year, class, programme, course codes, section...), only include those.
+- Skip holidays, reading days and rows without a date.
+- If you can't find an exam timetable, return {{"exams": []}}."""
+
+
+def clean_exams(data):
+    """Make the AI's exam timetable answer safe and tidy (it's untrusted input)."""
+    out = []
+    for e in (data.get("exams") if isinstance(data, dict) else None) or []:
+        if not isinstance(e, dict) or not isinstance(e.get("subject"), str) or not e["subject"].strip():
+            continue
+        day = str(e.get("date") or "").strip()
+        try:
+            datetime.strptime(day, "%Y-%m-%d")
+        except ValueError:
+            continue
+        t = str(e.get("time") or "").strip()
+        if len(t) == 4 and t[1] == ":":
+            t = "0" + t
+        try:
+            datetime.strptime(t, "%H:%M")
+        except ValueError:
+            t = ""
+        out.append({
+            "subject": e["subject"].strip()[:60],
+            "code": str(e.get("code") or "").strip()[:20],
+            "date": day,
+            "time": t,
+            "kind": str(e.get("kind") or "").strip()[:20],
+        })
+    return out[:60]
+
+
+@bp.post("/api/ai/exams")
+@login_required
+def read_exam_timetable():
+    """Reads an exam timetable (date sheet) into a list of exams with dates."""
+    hint = (request.form.get("hint") or "").strip()[:120]
+    region = (request.form.get("region") or "").strip()[:20] or "unknown"
+    today = (request.form.get("today") or "").strip()[:10]
+    try:
+        datetime.strptime(today, "%Y-%m-%d")
+    except ValueError:
+        today = datetime.now(ZoneInfo("UTC")).date().isoformat()
+    text = (request.form.get("text") or "").strip()
+    file = request.files.get("file")
+    prompt = EXAMS_PROMPT.format(today=today, region=region) + (f"\n\nWhich exams are the student's: {hint}" if hint else "")
+
+    if file:
+        if file.mimetype not in ALLOWED_UPLOADS:
+            return jsonify(error="Upload a photo (PNG, JPG, WEBP) or a PDF of the exam timetable."), 400
+        raw = file.read(MAX_UPLOAD_BYTES + 1)
+        if len(raw) > MAX_UPLOAD_BYTES:
+            return jsonify(error="That file is bigger than 15 MB. Try a screenshot of just your exams."), 413
+        parts = [{"text": prompt}, {"inline_data": {"mime_type": file.mimetype, "data": base64.b64encode(raw).decode()}}]
+    elif text:
+        if len(text) > 60000:
+            return jsonify(error="That's a lot of text. Paste just your own exams."), 413
+        parts = [{"text": prompt + "\n\nEXAM TIMETABLE TEXT:\n" + text}]
+    else:
+        return jsonify(error="Upload the exam timetable or paste its text first."), 400
+
+    use_quota()
+    answer = call_gemini(parts, want_json=True)
+    try:
+        exams = clean_exams(json.loads(answer))
+    except ValueError:
+        raise AiError("The AI's answer couldn't be understood. Try again.")
+    return jsonify(exams=exams, remaining=remaining_today())
+
+
+FLASHCARD_PROMPT = """Make study flashcards for a student (pitch them at the level the subject and topic suggest).
 Subject: {subject}
 Chapter/topic: {topic}
 
@@ -401,7 +494,7 @@ def flashcards():
         count = 8
 
     use_quota()
-    text = call_gemini([{"text": FLASHCARD_PROMPT.format(subject=subject or "Computer Science", topic=topic, count=count)}], want_json=True)
+    text = call_gemini([{"text": FLASHCARD_PROMPT.format(subject=subject or "general studies", topic=topic, count=count)}], want_json=True)
     try:
         raw = json.loads(text).get("cards", [])
         cards = [

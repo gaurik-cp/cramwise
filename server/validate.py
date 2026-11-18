@@ -56,13 +56,16 @@ def _int(v, fallback, lo, hi):
 
 
 def clean_subjects(subjects):
-    """Keep only subjects the app can use (a subject without a valid exam date
-    would break the timetable on every device), and tidy their numbers."""
+    """Keep only subjects the app can use (a broken exam date would break the
+    timetable on every device), and tidy their numbers."""
     out = []
     for s in subjects[:50]:
         if not isinstance(s, dict) or not isinstance(s.get("name"), str) or not s["name"].strip():
             continue
-        if not isinstance(s.get("examDate"), str) or not DATE.match(s["examDate"]):
+        # examDate "" (or missing) = no exam or deadline, just learning.
+        # Anything else must be a real date.
+        exam = s.get("examDate") or ""
+        if not isinstance(exam, str) or (exam and not DATE.match(exam)):
             continue
         topics = None
         if isinstance(s.get("topics"), list):
@@ -76,12 +79,14 @@ def clean_subjects(subjects):
         clean = {
             "id": str(s.get("id") or "")[:64] or f"s{len(out)}",
             "name": s["name"].strip()[:40],
-            "examDate": s["examDate"],
+            "examDate": exam,
             "difficulty": _int(s.get("difficulty"), 3, 1, 5),
             "totalChapters": total,
             "chaptersDone": done,
             "color": str(s.get("color") or "")[:16],
         }
+        if isinstance(s.get("examTime"), str) and TIME.match(s["examTime"]):
+            clean["examTime"] = s["examTime"]
         if topics:
             clean["topics"] = topics
         out.append(clean)

@@ -201,10 +201,25 @@ code { font-family: var(--font-pixel); font-size: 0.85em; color: var(--mana); }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
 
 .boss-form {
-  display: grid; grid-template-columns: 2fr 1.3fr 0.8fr 0.8fr; gap: 14px; margin-top: 26px;
+  display: grid; grid-template-columns: 2fr 1.3fr 0.8fr 0.8fr; gap: 14px; margin-top: 12px;
   background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 18px; box-shadow: 0 6px 0 var(--shadow);
 }
+.f-name { grid-column: 1 / 3; }
 .f-diff { grid-column: 1 / 4; }
+/* Exam or deadline: "Has a date / No deadline" + date and optional time */
+.deadline-field .seg { align-self: flex-start; }
+.deadline-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.deadline-row .input[type="date"] { flex: 1 1 170px; }
+.deadline-row .input[type="time"] { flex: 0 1 140px; }
+/* Big friendly "upload your exam timetable / syllabus" button on setup */
+.import-cta {
+  display: flex; flex-direction: column; gap: 4px; width: 100%; margin-top: 20px; padding: 18px 20px; text-align: left;
+  border-radius: 16px; border: 3px dashed color-mix(in srgb, var(--xp) 55%, transparent);
+  background: color-mix(in srgb, var(--xp) 6%, var(--panel)); color: var(--text); transition: background 0.15s, border-color 0.15s;
+}
+.import-cta:hover { border-color: var(--xp); background: color-mix(in srgb, var(--xp) 12%, var(--panel)); }
+.import-cta-title { font-family: var(--font-head); font-size: 1.05rem; }
+.import-cta-sub { color: var(--muted); font-size: 0.92rem; }
 .f-add { align-self: end; height: 46px; }
 .scale { display: flex; gap: 6px; }
 .scale button {
@@ -604,6 +619,17 @@ code { font-family: var(--font-pixel); font-size: 0.85em; color: var(--mana); }
 .title-row .panel-title { margin-bottom: 0; }
 .title-row.spaced { margin-top: 34px; }
 .syl-drop { margin: 14px 0; padding: 20px; }
+/* Import: exam timetable + syllabus side by side */
+.imp-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+.imp-box { background: var(--panel-2); border: 2px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.imp-box.is-set { border-color: var(--xp); }
+.imp-title { font-family: var(--font-head); font-size: 0.98rem; }
+.imp-sub { color: var(--muted); font-size: 0.85rem; margin-top: -6px; }
+.imp-drop { padding: 18px 12px; min-height: 96px; }
+.imp-links { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 0.85rem; }
+.imp-nodate { font-size: 0.85rem; }
+.imp-num { width: 76px !important; }
+.imp-from { grid-column: 1 / -1; font-size: 0.8rem; color: var(--muted); }
 .syl-list { list-style: none; display: flex; flex-direction: column; gap: 12px; max-height: 55vh; overflow-y: auto; padding-right: 4px; }
 .syl-list > li { background: var(--panel-2); border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; }
 .syl-list > li.is-off { opacity: 0.5; }
@@ -934,6 +960,7 @@ code { font-family: var(--font-pixel); font-size: 0.85em; color: var(--mana); }
   .quiz-options { grid-template-columns: 1fr; }
   .split li { grid-template-columns: 80px 1fr 56px; }
   .syl-preview ol { columns: 1; }
+  .imp-pair { grid-template-columns: 1fr; }
   .chart { gap: 5px; height: 170px; }
   .review-actions { grid-template-columns: 1fr; }
   .flashcard { min-height: 220px; padding: 22px 16px; }

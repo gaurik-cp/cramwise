@@ -5,7 +5,7 @@
 // Every change applies straight away and the timetable rebuilds itself.
 import { useEffect, useState } from "react";
 import WeekEditor from "./WeekEditor.jsx";
-import { addDays, formatDay, parseISODate, toISODate } from "../utils/dates.js";
+import { addDays, formatDay, formatTime, parseISODate, toISODate } from "../utils/dates.js";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const ORDER = [1, 2, 3, 4, 5, 6, 0];
@@ -279,7 +279,7 @@ function describe(c) {
   if (c.off) return "Day off";
   const parts = [];
   if (c.hours) parts.push(`${c.hours}h of study`);
-  (c.busy ?? []).forEach((b) => parts.push(`${b.label} ${b.start}–${b.end}`));
+  (c.busy ?? []).forEach((b) => parts.push(`${b.label} ${formatTime(b.start)}–${formatTime(b.end)}`));
   return parts.join(" · ");
 }
 

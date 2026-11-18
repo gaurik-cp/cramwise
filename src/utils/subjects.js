@@ -60,7 +60,7 @@ export function parseTopicList(text) {
 
 // Makes sure every subject is usable, fixing what it can and dropping what
 // it can't. Protects against broken backup files or old saved data
-// (a subject with no exam date would otherwise crash the timetable).
+// (a broken exam date would otherwise crash the timetable).
 export function cleanSubjects(list) {
   if (!Array.isArray(list)) return [];
   const isDate = (d) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d));
@@ -69,7 +69,8 @@ export function cleanSubjects(list) {
     return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
   };
   return list
-    .filter((s) => s && typeof s === "object" && typeof s.name === "string" && s.name.trim() && isDate(s.examDate))
+    // examDate "" (or missing) = no exam or deadline, just learning
+    .filter((s) => s && typeof s === "object" && typeof s.name === "string" && s.name.trim() && (isDate(s.examDate) || !s.examDate))
     .slice(0, 50)
     .map((s, i) => {
       const topics = Array.isArray(s.topics)
@@ -83,6 +84,8 @@ export function cleanSubjects(list) {
         ...s,
         id: typeof s.id === "string" && s.id ? s.id : `s-${i}-${s.name}`,
         name: s.name.trim().slice(0, 40),
+        examDate: isDate(s.examDate) ? s.examDate : "",
+        examTime: /^\d{2}:\d{2}$/.test(s.examTime ?? "") ? s.examTime : undefined,
         difficulty: int(s.difficulty, 3, 1, 5),
         totalChapters: total,
         chaptersDone: int(s.chaptersDone, 0, 0, total),

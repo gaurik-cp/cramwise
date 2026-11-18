@@ -4,7 +4,7 @@
 // Two kinds of file:
 //   1. A whole plan:  { "type": "cramwise-plan", userName, subjects, prefs }
 //   2. Just a week:   { "type": "cramwise-week", busy: [ ...fixed blocks ] }
-//      (classes, labs, mess timings). This gets ADDED to your plan.
+//      (classes, labs, meals). This gets ADDED to your plan.
 
 const KINDS = ["class", "lab", "meal", "other"];
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;

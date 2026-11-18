@@ -1,7 +1,7 @@
 // "Your week" setup step: add the fixed things in your week
-// (classes, labs, mess meals...) so study sessions never clash with them.
+// (classes, labs, work, meals...) so study sessions never clash with them.
 import { useRef, useState } from "react";
-import { timeToMinutes } from "../utils/dates.js";
+import { formatTime, timeToMinutes } from "../utils/dates.js";
 import { readPlanFile } from "../utils/planFile.js";
 import { api } from "../utils/api.js";
 
@@ -124,10 +124,10 @@ export default function WeekEditor({ busy, setBusy, dayStart, dayEnd, aiState, b
       <div className="week-main">
         {aiOn && (
           <label className="field batch-field">
-            <span>Your batch or section (helps when one file has many timetables)</span>
+            <span>Which timetable is yours? (helps when one file has many classes or groups)</span>
             <input
               className="input"
-              placeholder="e.g. B.Tech Sem 3, CSE with Cyber Security, 2025 admission"
+              placeholder="e.g. Year 2 Computer Science, Grade 10 B, Section 3"
               value={batchHint}
               onChange={(e) => setBatchHint(e.target.value)}
             />
@@ -154,8 +154,8 @@ export default function WeekEditor({ busy, setBusy, dayStart, dayEnd, aiState, b
           </span>
           <span className="dropzone-sub">
             {aiOn
-              ? "Class or mess timetable, photo or PDF. The AI fills in your week for you."
-              : "Class or mess timetable, photo or PDF. It shows beside the form so you can copy it."}
+              ? "Class, work or meal timetable, photo or PDF. The AI fills in your week for you."
+              : "Class, work or meal timetable, photo or PDF. It shows beside the form so you can copy it."}
           </span>
         </label>
         {info && <p className="info-note">{info}</p>}
@@ -273,7 +273,7 @@ export default function WeekEditor({ busy, setBusy, dayStart, dayEnd, aiState, b
                   <span className={`kind-chip kind-${b.kind}`}>{KIND_LABEL[b.kind]}</span>
                   <b>{b.label}</b>
                   <span className="added-meta">
-                    {b.start}–{b.end}, {daysText(b.days)}
+                    {formatTime(b.start)}–{formatTime(b.end)}, {daysText(b.days)}
                   </span>
                   <button className="link-btn" onClick={() => removeBlock(b.id)}>
                     Remove

@@ -1,6 +1,6 @@
 # Cramwise
 
-A smart study planner: tell it your subjects, exam dates and how much is left,
+A smart study planner for anyone, anywhere: tell it your subjects, exam dates (or no deadline at all) and how much is left,
 and it builds a day-by-day timetable that focuses on whatever is most urgent.
 
 ## Run it
@@ -21,7 +21,10 @@ To switch on Google sign-in and AI, see **SETUP-ONLINE.md**.
 
 - **Quests**: today's study sessions, tick them off (or run the focus timer) for XP
 - **Bosses**: each exam is a boss, HP = chapters left; add chapter names to get "next chapter" hints
-- **Week**: day view of your timetable around classes, labs and mess timings (works past midnight)
+- **Import**: upload your exam timetable and/or syllabus; the AI fills in subjects, exam dates and times, and chapters, and you check them in one table first
+- **No deadline?** Things you're just learning (a language, coding...) get steady study time every week, with no countdown
+- **Works worldwide**: dates and times follow your own country's style (5 Dec vs Dec 5, 24-hour vs AM/PM)
+- **Week**: day view of your timetable around classes, work and meal times (works past midnight)
 - **Cards**: flashcards with spaced repetition (right = comes back in 1, 2, 4, 7, 14 days; wrong = tomorrow). The AI can write them from a chapter
 - **Revision rounds**: every chapter you finish comes back as a 15-minute revision 1, 3 and 7 days later
 - **Exam week**: 3 days before an exam that subject becomes revision-only, with your weak chapters (from quiz scores) and a one-tap quick quiz
@@ -56,7 +59,8 @@ src/
     StudyExtras.jsx        exam-week panel + revision rounds
     Friends.jsx            friend code + weekly leaderboard
     Appearance.jsx         theme and accent colour picker
-    SyllabusImport.jsx     AI reads your syllabus into bosses + chapters
+    StudyImport.jsx        AI reads your exam timetable + syllabus into bosses
+    DeadlineField.jsx      "Has a date / No deadline" picker with optional exam time
   utils/
     scheduler.js           timetable generator (step-by-step comments inside)
     urgency.js             urgency score (0-100)
@@ -70,7 +74,7 @@ server/
   app.py                   Flask app: settings, security headers, CSRF check
   auth.py                  Google sign-in, sessions
   plans.py                 save/load each user's plan
-  ai.py                    Gemini: timetable photos, chat, advice, quizzes, syllabus, flashcards (with retries)
+  ai.py                    Gemini: timetable photos, chat, advice, quizzes, exam timetables, syllabus, flashcards (with retries)
   friends.py               friend codes + weekly leaderboard
   models.py  validate.py  test_app.py
 public/

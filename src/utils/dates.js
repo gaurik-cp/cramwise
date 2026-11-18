@@ -32,8 +32,10 @@ export function toISODate(d) {
   return `${x.getFullYear()}-${mm}-${dd}`;
 }
 
+// Dates and times are shown the way the person's own country writes them
+// (the browser knows: 5 Dec in India/UK, Dec 5 in the US, and so on).
 export function formatDay(d) {
-  return new Date(d).toLocaleDateString("en-IN", {
+  return new Date(d).toLocaleDateString(undefined, {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -51,4 +53,23 @@ export function minutesToTime(mins) {
 export function timeToMinutes(t) {
   const [h, m] = t.split(":").map(Number);
   return h * 60 + m;
+}
+
+// "14:30" -> "2:30 PM" in the US/India, "14:30" in most of Europe
+export function formatTime(t) {
+  if (!t || !/^\d{2}:\d{2}$/.test(t)) return t || "";
+  const [h, m] = t.split(":").map(Number);
+  return new Date(2000, 0, 1, h % 24, m).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+// ─── Subjects without an exam or deadline ───
+// examDate is "" for things you're just learning (e.g. "Learn Python").
+// They're planned at a steady pace, as if the deadline were always a month away.
+export const STEADY_PACE_DAYS = 30;
+export function hasDeadline(subject) {
+  return typeof subject?.examDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(subject.examDate);
+}
+// Days from `from` until this subject's exam (Infinity when there's no deadline)
+export function daysToDeadline(subject, from = new Date()) {
+  return hasDeadline(subject) ? daysBetween(from, parseISODate(subject.examDate)) : Infinity;
 }

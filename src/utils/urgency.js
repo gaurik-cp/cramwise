@@ -20,16 +20,19 @@
 //
 // Final score = 100 × (0.45·deadline + 0.25·difficulty + 0.30·load)
 // The weights add up to 1, so the score can never go above 100.
+//
+// No exam or deadline (just learning)? Then it's planned at a steady pace,
+// as if the deadline were always STEADY_PACE_DAYS (30) days away.
 // ─────────────────────────────────────────────────────────────
 
-import { daysBetween, parseISODate } from "./dates.js";
+import { STEADY_PACE_DAYS, daysToDeadline, hasDeadline } from "./dates.js";
 
 export const WEIGHTS = { deadline: 0.45, difficulty: 0.25, load: 0.3 };
 
 export function urgencyBreakdown(subject, onDate = new Date()) {
-  const examDate = parseISODate(subject.examDate);
+  const noDeadline = !hasDeadline(subject);
   // At least 1 day, so we never divide by zero.
-  const daysLeft = Math.max(1, daysBetween(onDate, examDate));
+  const daysLeft = noDeadline ? STEADY_PACE_DAYS : Math.max(1, daysToDeadline(subject, onDate));
   const chaptersLeft = Math.max(0, subject.totalChapters - subject.chaptersDone);
 
   const deadline = 1 / (1 + daysLeft / 7);
@@ -45,10 +48,13 @@ export function urgencyBreakdown(subject, onDate = new Date()) {
 
   // Everything already done? Keep only a small "revision" score.
   if (chaptersLeft === 0) score = Math.min(score, 15);
+  // No deadline: never push it above things with a real exam coming up soon
+  if (noDeadline) score = Math.min(score, 45);
 
   return {
     score: Math.round(score),
-    daysLeft,
+    daysLeft: noDeadline ? null : daysLeft,
+    noDeadline,
     chaptersLeft,
     chaptersPerDay,
     factors: { deadline, difficulty, load },

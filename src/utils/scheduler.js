@@ -3,7 +3,7 @@
 //
 // For each day we:
 //   1. Find your FREE time: your study window (e.g. 07:00 to 22:30)
-//      minus your fixed blocks (classes, labs, mess meals...).
+//      minus your fixed blocks (classes, labs, work, meals...).
 //   2. Cut that free time into study slots (session + break),
 //      up to your daily study hours.
 //   3. Drop subjects whose exam is already over (or is today).
@@ -22,6 +22,8 @@ import { urgencyScore } from "./urgency.js";
 import {
   addDays,
   daysBetween,
+  daysToDeadline,
+  hasDeadline,
   parseISODate,
   toISODate,
   minutesToTime,
@@ -88,7 +90,7 @@ export function busyFor(prefs, weekday, isoDate) {
 // Example: window 07:00-22:00, class 09:00-17:00, 50-min sessions, 10-min breaks
 //   -> slots 07:00, 08:00 (morning gap), then 17:10, 18:10 ... (evening gap)
 // We keep a small gap (the break length) after each fixed block too,
-// so you have time to walk back from class or the mess.
+// so you have time to walk back from class or a meal.
 export function findSlots(prefs, weekday, maxSlots, isoDate) {
   const len = Math.max(15, Number(prefs.sessionLength) || 50);
   const brk = Math.max(0, Number(prefs.breakLength) || 0);
@@ -147,12 +149,15 @@ export function generateTimetable(subjects, rawPrefs, startDate = new Date()) {
       continue;
     }
 
-    // Step 3: only subjects whose exam is still ahead
-    const active = subjects.filter((s) => daysBetween(date, parseISODate(s.examDate)) > 0);
+    // Step 3: only subjects whose exam is still ahead, plus ones with no
+    // deadline that still have chapters left (or no chapter list at all)
+    const active = subjects.filter((s) =>
+      hasDeadline(s) ? daysToDeadline(s, date) > 0 : (s.totalChapters ?? 1) - (s.chaptersDone ?? 0) > 0
+    );
 
     // Day off chosen by the user, BUT never the day before an exam,
     // because that's the most important revision day.
-    const examTomorrow = active.some((s) => daysBetween(date, parseISODate(s.examDate)) === 1);
+    const examTomorrow = active.some((s) => daysToDeadline(s, date) === 1);
     const skippedRest = prefs.restDays.includes(weekday) && examTomorrow;
     if (prefs.restDays.includes(weekday) && !examTomorrow) {
       days.push({ ...base, rest: true });
@@ -178,7 +183,7 @@ export function generateTimetable(subjects, rawPrefs, startDate = new Date()) {
     const scored = active.map((s) => ({
       subject: s,
       score: Math.max(1, urgencyScore(s, date)),
-      daysToExam: daysBetween(date, parseISODate(s.examDate)),
+      daysToExam: daysToDeadline(s, date),
     }));
 
     // Step 5: how many sessions each subject gets
@@ -188,7 +193,7 @@ export function generateTimetable(subjects, rawPrefs, startDate = new Date()) {
     const order = orderSessions(counts, scored);
     const sessions = order.map((subjectId, k) => {
       const s = active.find((x) => x.id === subjectId);
-      const daysToExam = daysBetween(date, parseISODate(s.examDate));
+      const daysToExam = daysToDeadline(s, date);
       lastStudied[subjectId] = i;
       return {
         subjectId,

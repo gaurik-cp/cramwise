@@ -15,7 +15,7 @@ import Trophies from "./Trophies.jsx";
 import Stats from "./Stats.jsx";
 import BossEditor from "./BossEditor.jsx";
 import QuickAdjust from "./QuickAdjust.jsx";
-import SyllabusImport from "./SyllabusImport.jsx";
+import StudyImport from "./StudyImport.jsx";
 import Cards from "./Cards.jsx";
 import Friends from "./Friends.jsx";
 import Appearance from "./Appearance.jsx";
@@ -29,7 +29,7 @@ import { askNotificationPermission, getSetting, notify, notificationsSupported, 
 import { generateTimetable } from "../utils/scheduler.js";
 import { exportTimetablePDF } from "../utils/pdfExport.js";
 import { downloadPlan, readPlanFile } from "../utils/planFile.js";
-import { toISODate, timeToMinutes, addDays } from "../utils/dates.js";
+import { toISODate, timeToMinutes, addDays, formatTime } from "../utils/dates.js";
 
 const TABS = [
   { id: "today", label: "Today" },
@@ -141,7 +141,7 @@ export default function Dashboard(props) {
         const key = `${s._date}|${s.start}`;
         if (startM - nowM <= 5 && startM - nowM >= 0 && !reminded.current.has(key)) {
           reminded.current.add(key);
-          notify(`${s.subjectName} in ${startM - nowM} min`, `Quest at ${s.start}. Open Cramwise and press Start.`);
+          notify(`${s.subjectName} in ${startM - nowM} min`, `Quest at ${formatTime(s.start)}. Open Cramwise and press Start.`);
         }
       });
     };
@@ -306,7 +306,7 @@ export default function Dashboard(props) {
             <div className="title-row spaced">
               <h2 className="panel-title">Your bosses</h2>
               <button className="btn btn-ghost btn-small" onClick={() => setSyllabusOpen(true)}>
-                Import syllabus
+                Import exams / syllabus
               </button>
             </div>
             <p className="muted panel-sub">
@@ -373,7 +373,7 @@ export default function Dashboard(props) {
       {lookOpen && <Appearance look={look} onChange={onSetLook} onClose={() => setLookOpen(false)} />}
 
       {syllabusOpen && (
-        <SyllabusImport
+        <StudyImport
           existing={subjects}
           aiState={aiState}
           onApply={(list) => list.forEach((s) => onSaveSubject(s))}

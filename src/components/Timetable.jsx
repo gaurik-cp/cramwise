@@ -1,9 +1,9 @@
 // The timetable as a day view: one strip per day, left = morning, right = night.
-// Grey blocks = your fixed week (classes, labs, mess). Coloured = study.
+// Grey blocks = your fixed week (classes, labs, work, meals). Coloured = study.
 // A yellow line on today's strip shows the time right now.
 // On phones the CSS shows each day as a simple list instead.
 import { useEffect, useState } from "react";
-import { formatDay, parseISODate, toISODate, timeToMinutes } from "../utils/dates.js";
+import { formatDay, formatTime, parseISODate, toISODate, timeToMinutes } from "../utils/dates.js";
 
 // Ticks every minute so the "now" line moves
 function useNowMinutes() {
@@ -116,7 +116,7 @@ export default function Timetable({ timetable }) {
               {items.map((it) => (
                 <li key={(it.isBusy ? "b" : "s") + it.start + (it.id ?? "")} className={it.isBusy ? "is-busy" : ""}>
                   <span className="dv-list-time">
-                    {it.start}–{it.end}
+                    {formatTime(it.start)}–{formatTime(it.end)}
                   </span>
                   {it.isBusy ? (
                     <span className="dv-list-busy">{it.label}</span>

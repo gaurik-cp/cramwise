@@ -24,7 +24,7 @@ export function exportTimetablePDF({ userName, subjects, timetable }) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.text(
-    `Study plan for ${userName || "you"}, made on ${new Date().toLocaleDateString("en-IN")}`,
+    `Study plan for ${userName || "you"}, made on ${new Date().toLocaleDateString()}`,
     40,
     70
   );
@@ -40,8 +40,8 @@ export function exportTimetablePDF({ userName, subjects, timetable }) {
     .sort((a, b) => b.u.score - a.u.score)
     .map(({ s, u }) => [
       s.name,
-      formatDay(parseISODate(s.examDate)),
-      `${u.daysLeft}`,
+      s.examDate ? formatDay(parseISODate(s.examDate)) : "No deadline",
+      u.daysLeft === null ? "-" : `${u.daysLeft}`,
       `${u.chaptersLeft}`,
       `${s.difficulty}/5`,
       `${u.score} (${urgencyLevel(u.score).label})`,

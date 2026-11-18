@@ -17,7 +17,7 @@
 // Everything is saved inside the plan as `progress`:
 //   { xp, done: { "2026-10-03": [quest, ...] }, today: { date, quests } }
 // ─────────────────────────────────────────────────────────────
-import { toISODate, addDays } from "./dates.js";
+import { toISODate, addDays, hasDeadline } from "./dates.js";
 
 export const CHAPTER_XP = 30;
 export const REVISION_BONUS = 20;
@@ -307,7 +307,7 @@ export function revisionsDue(progress, subjects, today = new Date()) {
   const out = [];
   for (const e of progress.chapterLog ?? []) {
     const subject = subjects.find((s) => s.id === e.subjectId);
-    if (!subject || subject.examDate < t) continue; // exam over: no point revising
+    if (!subject || (hasDeadline(subject) && subject.examDate < t)) continue; // exam over: no point revising
     let pick = null;
     for (const step of REVISION_STEPS) {
       const due = toISODate(addDays(new Date(e.date + "T12:00:00"), step));
@@ -358,6 +358,7 @@ export function weakChapters(progress, subject) {
 export const EXAM_WEEK_DAYS = 3;
 export function examWeekSubjects(subjects, today = new Date()) {
   return subjects
+    .filter(hasDeadline)
     .map((s) => ({ s, days: Math.round((new Date(s.examDate + "T00:00:00") - new Date(toISODate(today) + "T00:00:00")) / 86400000) }))
     .filter((x) => x.days >= 1 && x.days <= EXAM_WEEK_DAYS)
     .sort((a, b) => a.days - b.days);

@@ -23,8 +23,8 @@ export function PlanAdvice({ subjects, timetable }) {
         const u = urgencyBreakdown(s);
         return {
           name: s.name,
-          examDate: s.examDate,
-          daysLeft: u.daysLeft,
+          examDate: s.examDate || "none (no deadline, just learning)",
+          daysLeft: u.daysLeft ?? "no deadline",
           chaptersDone: s.chaptersDone,
           totalChapters: s.totalChapters,
           difficulty: s.difficulty,

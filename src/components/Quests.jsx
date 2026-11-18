@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { isDone, questXp, weakChapters } from "../utils/game.js";
 import { nextTopic } from "../utils/subjects.js";
-import { formatDay, parseISODate } from "../utils/dates.js";
+import { formatDay, formatTime, parseISODate } from "../utils/dates.js";
 import { timeToMinutes } from "../utils/dates.js";
 
 // Each session can carry its own `_date` (late-night sessions from yesterday);
@@ -38,7 +38,7 @@ export default function Quests({ date, sessions, busy, subjects, progress, onTog
           <li key={key} style={{ "--ink": m.color }}>
             <span className="missed-name">{m.subjectName}</span>
             <span className="missed-when">
-              {formatDay(parseISODate(d))}, {m.start}
+              {formatDay(parseISODate(d))}, {formatTime(m.start)}
             </span>
             <button className="btn btn-ghost btn-small" onClick={() => onMakeUp(d, m)}>
               I did it
@@ -82,7 +82,7 @@ export default function Quests({ date, sessions, busy, subjects, progress, onTog
         </p>
         {nextFixed && (
           <p className="muted">
-            Next fixed: {nextFixed.label} at {nextFixed.start}
+            Next fixed: {nextFixed.label} at {formatTime(nextFixed.start)}
           </p>
         )}
       </div>
@@ -126,7 +126,7 @@ export default function Quests({ date, sessions, busy, subjects, progress, onTog
                   {live && !done && <em className="tag-live">Now</em>}
                 </span>
                 <span className="quest-time">
-                  {s.start}–{s.end}
+                  {formatTime(s.start)}–{formatTime(s.end)}
                 </span>
               </div>
               <div className="quest-side">

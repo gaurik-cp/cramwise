@@ -184,6 +184,48 @@ class CramwiseTests(unittest.TestCase):
         self.assertEqual(body["subjects"][0]["units"], [{"name": "Unit 1", "topics": ["Big-O", "Recurrences"]}])
         self.assertIn("Sem 3", post.call_args.kwargs["json"]["contents"][0]["parts"][0]["text"])
 
+    @mock.patch("ai.requests.post")
+    def test_exam_timetable_from_text(self, post):
+        post.return_value = FakeResponse(json.dumps({"exams": [
+            {"subject": "Databases", "code": "CS 301", "date": "2026-12-21", "time": "9:30", "kind": "Final"},
+            {"subject": "Algorithms", "date": "2026-12-23", "time": "afternoon"},
+            {"subject": "Bad date", "date": "21/12/2026"},
+            {"subject": "", "date": "2026-12-24"},
+            "junk",
+        ]}))
+        self.login()
+        r = self.c.post("/api/ai/exams", headers=H, content_type="multipart/form-data",
+                        data={"text": "21/12 CS301 Databases 9:30", "hint": "Year 2", "region": "GB", "today": "2026-11-18"})
+        body = r.get_json()
+        self.assertEqual(r.status_code, 200, body)
+        self.assertEqual(body["exams"], [
+            {"subject": "Databases", "code": "CS 301", "date": "2026-12-21", "time": "09:30", "kind": "Final"},
+            {"subject": "Algorithms", "code": "", "date": "2026-12-23", "time": "", "kind": ""},
+        ])
+        prompt = post.call_args.kwargs["json"]["contents"][0]["parts"][0]["text"]
+        self.assertIn("Today is 2026-11-18", prompt)
+        self.assertIn('region is "GB"', prompt)
+        self.assertIn("Year 2", prompt)
+
+    def test_exam_timetable_needs_input(self):
+        self.login()
+        r = self.c.post("/api/ai/exams", headers=H, data={}, content_type="multipart/form-data")
+        self.assertEqual(r.status_code, 400)
+
+    def test_no_deadline_subjects_and_exam_times_are_kept(self):
+        self.login()
+        plan = {**PLAN, "subjects": [
+            {"name": "Learn Spanish", "examDate": "", "difficulty": 2, "totalChapters": 20, "chaptersDone": 1},
+            {"name": "Physics", "examDate": "2026-12-01", "examTime": "14:00", "totalChapters": 5},
+            {"name": "Bad time", "examDate": "2026-12-02", "examTime": "2pm", "totalChapters": 5},
+        ]}
+        r = self.c.put("/api/plan", json={"plan": plan}, headers=H)
+        self.assertEqual(r.status_code, 200, r.get_data(as_text=True))
+        saved = {s["name"]: s for s in self.c.get("/api/plan").get_json()["plan"]["subjects"]}
+        self.assertEqual(saved["Learn Spanish"]["examDate"], "")
+        self.assertEqual(saved["Physics"]["examTime"], "14:00")
+        self.assertNotIn("examTime", saved["Bad time"])
+
     def test_syllabus_needs_input(self):
         self.login()
         r = self.c.post("/api/ai/syllabus", headers=H, data={}, content_type="multipart/form-data")
@@ -196,7 +238,9 @@ class CramwiseTests(unittest.TestCase):
         r = self.c.put("/api/plan", data=json.dumps({"plan": plan}).replace("NaN", "NaN"), headers={**H, "Content-Type": "application/json"})
         self.assertEqual(r.status_code, 200, r.get_data(as_text=True))
         saved = self.c.get("/api/plan").get_json()["plan"]
-        self.assertEqual([s["name"] for s in saved["subjects"]], ["DAA"])
+        # "no date" = no deadline (kept); "soon" isn't a date (dropped)
+        self.assertEqual([s["name"] for s in saved["subjects"]], ["DAA", "no date"])
+        self.assertEqual(saved["subjects"][1]["examDate"], "")
         self.assertEqual(saved["prefs"]["busy"][0]["days"], [2])
 
     @mock.patch("ai.requests.post")

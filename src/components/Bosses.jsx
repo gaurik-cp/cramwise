@@ -3,7 +3,7 @@
 // Most dangerous boss first (highest urgency score).
 import { useState } from "react";
 import { urgencyBreakdown, urgencyLevel, WEIGHTS } from "../utils/urgency.js";
-import { formatDay, parseISODate, toISODate, daysBetween } from "../utils/dates.js";
+import { formatDay, formatTime, parseISODate, toISODate, daysBetween, hasDeadline } from "../utils/dates.js";
 import { CHAPTER_XP } from "../utils/game.js";
 import { nextTopic } from "../utils/subjects.js";
 
@@ -14,18 +14,22 @@ export default function Bosses({ subjects, onChapterChange, onToggleTopic, onEdi
   const [openId, setOpenId] = useState(null);
   const [listId, setListId] = useState(null); // which boss has its chapter list open
   const today = toISODate(new Date());
-  const withInfo = subjects.map((s) => ({ s, u: urgencyBreakdown(s), over: s.examDate < today }));
+  const withInfo = subjects.map((s) => ({ s, u: urgencyBreakdown(s), over: hasDeadline(s) && s.examDate < today }));
+  // Subjects with a deadline come first (soonest first); "just learning" ones go last
+  const dateKey = (s) => (hasDeadline(s) ? s.examDate : "9999");
   // Today tab: the single most dangerous boss whose exam hasn't happened yet.
   // Bosses tab: sorted by EXAM DATE (soonest first), not by urgency, so the cards
   // don't jump around under your mouse when "Chapter done" changes the urgency.
   const list = compact
     ? withInfo.filter((r) => !r.over).sort((a, b) => b.u.score - a.u.score).slice(0, 1)
-    : [...withInfo].sort((a, b) => a.over - b.over || a.s.examDate.localeCompare(b.s.examDate) || a.s.name.localeCompare(b.s.name));
+    : [...withInfo].sort((a, b) => a.over - b.over || dateKey(a.s).localeCompare(dateKey(b.s)) || a.s.name.localeCompare(b.s.name));
 
   return (
     <div className={`bosses ${compact ? "is-compact" : ""}`}>
       {list.map(({ s, u, over }) => {
-        const realDays = daysBetween(new Date(), parseISODate(s.examDate));
+        const steady = !hasDeadline(s);
+        const realDays = steady ? null : daysBetween(new Date(), parseISODate(s.examDate));
+        const at = s.examTime ? ` at ${formatTime(s.examTime)}` : "";
         const lvl = urgencyLevel(u.score);
         const hpLeft = s.totalChapters - s.chaptersDone;
         const hpPct = (hpLeft / s.totalChapters) * 100;
@@ -43,11 +47,13 @@ export default function Bosses({ subjects, onChapterChange, onToggleTopic, onEdi
               <div>
                 <h3 className={`boss-name ${s.name.length > 14 ? "is-long" : ""}`}>{s.name}</h3>
                 <p className="boss-when">
-                  {realDays === 0
-                    ? `Exam is today (${formatDay(parseISODate(s.examDate))}). Good luck!`
-                    : over
-                      ? `Exam was on ${formatDay(parseISODate(s.examDate))}`
-                      : `Exam ${formatDay(parseISODate(s.examDate))}, in ${realDays} day${realDays === 1 ? "" : "s"}`}
+                  {steady
+                    ? "No deadline: studied at a steady pace"
+                    : realDays === 0
+                      ? `Exam is today${at}. Good luck!`
+                      : over
+                        ? `Exam was on ${formatDay(parseISODate(s.examDate))}`
+                        : `Exam ${formatDay(parseISODate(s.examDate))}${at}, in ${realDays} day${realDays === 1 ? "" : "s"}`}
                 </p>
               </div>
               {onEdit && (
@@ -55,9 +61,9 @@ export default function Bosses({ subjects, onChapterChange, onToggleTopic, onEdi
                   Edit
                 </button>
               )}
-              <div className="boss-days" aria-label={realDays === 0 ? "Exam today" : over ? "Exam over" : `${realDays} days left`}>
-                <span className="boss-days-num">{realDays === 0 ? "!" : over ? "-" : realDays}</span>
-                <span className="boss-days-label">{realDays === 0 ? "today" : over ? "over" : "days"}</span>
+              <div className="boss-days" aria-label={steady ? "No deadline" : realDays === 0 ? "Exam today" : over ? "Exam over" : `${realDays} days left`}>
+                <span className="boss-days-num">{steady ? "∞" : realDays === 0 ? "!" : over ? "-" : realDays}</span>
+                <span className="boss-days-label">{steady ? "steady" : realDays === 0 ? "today" : over ? "over" : "days"}</span>
               </div>
             </header>
 
@@ -119,7 +125,7 @@ export default function Bosses({ subjects, onChapterChange, onToggleTopic, onEdi
 
             {open && (
               <p className="boss-why">
-                Threat {u.score}/100. The exam date adds <b>{pts.deadline}</b>, difficulty ({s.difficulty}/5) adds{" "}
+                Threat {u.score}/100. {steady ? "Having no deadline adds" : "The exam date adds"} <b>{pts.deadline}</b>, difficulty ({s.difficulty}/5) adds{" "}
                 <b>{pts.difficulty}</b>, and chapter load adds <b>{pts.load}</b>. You need about{" "}
                 {u.chaptersPerDay.toFixed(1)} chapters a day.
               </p>
@@ -131,7 +137,7 @@ export default function Bosses({ subjects, onChapterChange, onToggleTopic, onEdi
         <button className="boss-add" onClick={onAdd}>
           <span className="boss-add-plus" aria-hidden="true">+</span>
           Add a boss
-          <small>New exam or subject</small>
+          <small>New exam, subject or skill</small>
         </button>
       )}
     </div>

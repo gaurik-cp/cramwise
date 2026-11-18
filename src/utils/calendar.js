@@ -46,13 +46,17 @@ export function buildIcs(timetable, subjects) {
     });
   });
 
-  subjects.forEach((s) => {
+  // Exams (subjects with no deadline have nothing to put in the calendar).
+  // With a time: a 2-hour event at that local time; without: an all-day event.
+  subjects.filter((s) => s.examDate).forEach((s) => {
     const d = s.examDate.replace(/-/g, "");
+    const t = s.examTime ? s.examTime.replace(":", "") + "00" : null;
+    const endH = t ? String((Number(s.examTime.slice(0, 2)) + 2) % 24).padStart(2, "0") + s.examTime.slice(3) + "00" : null;
     lines.push(
       "BEGIN:VEVENT",
       `UID:cramwise-exam-${s.id}@cramwise`,
       `DTSTAMP:${now}`,
-      `DTSTART;VALUE=DATE:${d}`,
+      ...(t ? [`DTSTART:${d}T${t}`, `DTEND:${d}T${endH.replace(":", "")}`] : [`DTSTART;VALUE=DATE:${d}`]),
       `SUMMARY:${esc(`EXAM: ${s.name}`)}`,
       "END:VEVENT"
     );

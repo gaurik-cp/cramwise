@@ -1,14 +1,17 @@
-// Pop-up form to add a new boss (exam) or edit/delete an existing one,
+// Pop-up form to add a new boss (exam, or something with no deadline) or edit/delete one,
 // right from the Bosses tab, without going back through setup.
 import { useEffect, useRef, useState } from "react";
 import { addDays, toISODate } from "../utils/dates.js";
 import { inkFor } from "../utils/colors.js";
 import { parseTopicList } from "../utils/subjects.js";
+import DeadlineField from "./DeadlineField.jsx";
 
 export default function BossEditor({ subject, count, existing = [], onSave, onDelete, onClose }) {
   const isNew = !subject;
   const [name, setName] = useState(subject?.name ?? "");
-  const [examDate, setExamDate] = useState(subject?.examDate ?? toISODate(addDays(new Date(), 14)));
+  // "" = no deadline (just learning)
+  const [examDate, setExamDate] = useState(subject ? subject.examDate ?? "" : toISODate(addDays(new Date(), 14)));
+  const [examTime, setExamTime] = useState(subject?.examTime ?? "");
   const [difficulty, setDifficulty] = useState(subject?.difficulty ?? 3);
   const [total, setTotal] = useState(subject?.totalChapters ?? 8);
   const [done, setDone] = useState(subject?.chaptersDone ?? 0);
@@ -31,14 +34,14 @@ export default function BossEditor({ subject, count, existing = [], onSave, onDe
       return setError(`You already have a boss called ${name.trim()}.`);
     if (names.length === 0 && (!Number.isInteger(Number(total)) || !Number.isInteger(Number(done))))
       return setError("Chapters must be whole numbers (no decimals).");
-    if (!examDate) return setError("Pick the exam date.");
     // An exam date in the past is only allowed if it was already saved that way
-    if (examDate < toISODate(new Date()) && examDate !== subject?.examDate)
+    if (examDate && examDate < toISODate(new Date()) && examDate !== subject?.examDate)
       return setError("That date has already passed. Pick today or a future date (or delete this boss if the exam is over).");
     let next = {
       ...(subject ?? { id: crypto.randomUUID(), color: inkFor(count) }),
       name: name.trim().slice(0, 40),
       examDate,
+      examTime: examDate && examTime ? examTime : undefined,
       difficulty,
     };
     if (names.length > 0) {
@@ -64,12 +67,16 @@ export default function BossEditor({ subject, count, existing = [], onSave, onDe
         <div className="modal-grid">
           <label className="field">
             <span>Subject</span>
-            <input ref={firstRef} className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. DAA" />
+            <input ref={firstRef} className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Calculus, Biology, Learn Spanish" />
           </label>
-          <label className="field">
-            <span>Exam date</span>
-            <input type="date" className="input" value={examDate} onChange={(e) => setExamDate(e.target.value)} />
-          </label>
+          <DeadlineField
+            examDate={examDate}
+            examTime={examTime}
+            onChange={(v) => {
+              setExamDate(v.examDate);
+              setExamTime(v.examTime);
+            }}
+          />
           <div className="field span-all">
             <span>How hard? (1 easy, 5 brutal)</span>
             <div className="scale" role="radiogroup" aria-label="Difficulty">

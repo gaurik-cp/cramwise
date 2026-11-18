@@ -5,8 +5,9 @@
 import { useState } from "react";
 import { addDays, toISODate, formatDay, parseISODate } from "../utils/dates.js";
 import { inkFor } from "../utils/colors.js";
+import DeadlineField from "./DeadlineField.jsx";
 import WeekEditor from "./WeekEditor.jsx";
-import SyllabusImport from "./SyllabusImport.jsx";
+import StudyImport from "./StudyImport.jsx";
 import { syncCounts } from "../utils/subjects.js";
 import { normalizePrefs } from "../utils/scheduler.js";
 import { readPlanFile } from "../utils/planFile.js";
@@ -52,12 +53,13 @@ export default function Onboarding({ initial, onFinish, onImportPlan, aiState })
     if (Number(draft.totalChapters) < 1) return setError("A subject needs at least 1 chapter.");
     if (Number(draft.chaptersDone) > Number(draft.totalChapters))
       return setError("Chapters done can't be more than total chapters.");
-    if (draft.examDate <= toISODate(new Date())) return setError("Pick an exam date after today.");
+    if (draft.examDate && draft.examDate <= toISODate(new Date())) return setError("Pick an exam date after today (or choose No deadline).");
     setSubjects([
       ...subjects,
       {
         ...draft,
         name: draft.name.trim(),
+        examTime: draft.examDate && draft.examTime ? draft.examTime : undefined,
         id: crypto.randomUUID(),
         difficulty: Number(draft.difficulty),
         totalChapters: Number(draft.totalChapters),
@@ -156,30 +158,26 @@ export default function Onboarding({ initial, onFinish, onImportPlan, aiState })
         {step === 1 && (
           <>
             <h1 className="setup-title">Add your bosses</h1>
-            <p className="lead">One per exam. Count only chapters that are on the exam.</p>
-            <p className="small-links">
-              Have your syllabus?{" "}
-              <button className="link-btn" onClick={() => setSyllabusOpen(true)}>
-                Import it and the AI adds your subjects with real chapter names
-              </button>{" "}
-              (optional)
+            <p className="lead">
+              One per exam, or per thing you're learning without a deadline. Count only the chapters you need to cover.
             </p>
+            <button className="import-cta" onClick={() => setSyllabusOpen(true)}>
+              <span className="import-cta-title">Got your exam timetable or syllabus?</span>
+              <span className="import-cta-sub">Upload one or both. The AI fills in your subjects, exam dates and chapters, and you check them before anything is added.</span>
+            </button>
+            <p className="muted small-gap">Or add them by hand:</p>
 
             <div className="boss-form">
               <label className="field f-name">
                 <span>Subject</span>
                 <input
                   className="input"
-                  placeholder="e.g. DAA"
+                  placeholder="e.g. Calculus, Biology, Learn Spanish"
                   value={draft.name}
                   autoFocus
                   onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                   onKeyDown={(e) => e.key === "Enter" && addSubject()}
                 />
-              </label>
-              <label className="field">
-                <span>Exam date</span>
-                <input type="date" className="input" value={draft.examDate} onChange={(e) => setDraft({ ...draft, examDate: e.target.value })} />
               </label>
               <label className="field">
                 <span>Chapters</span>
@@ -189,6 +187,7 @@ export default function Onboarding({ initial, onFinish, onImportPlan, aiState })
                 <span>Already done</span>
                 <input type="number" min="0" className="input" value={draft.chaptersDone} onChange={(e) => setDraft({ ...draft, chaptersDone: e.target.value })} />
               </label>
+              <DeadlineField examDate={draft.examDate} examTime={draft.examTime ?? ""} onChange={(v) => setDraft({ ...draft, ...v })} />
               <div className="field f-diff">
                 <span>How hard? (1 easy, 5 brutal)</span>
                 <div className="scale" role="radiogroup" aria-label="Difficulty">
@@ -216,7 +215,7 @@ export default function Onboarding({ initial, onFinish, onImportPlan, aiState })
                   <li key={s.id} style={{ "--ink": s.color }}>
                     <b>{s.name}</b>
                     <span>
-                      {formatDay(parseISODate(s.examDate))}, {s.totalChapters - s.chaptersDone} ch left, difficulty {s.difficulty}
+                      {s.examDate ? formatDay(parseISODate(s.examDate)) : "No deadline"}, {s.totalChapters - s.chaptersDone} ch left, difficulty {s.difficulty}
                     </span>
                     <button className="chip-x" onClick={() => setSubjects(subjects.filter((x) => x.id !== s.id))} aria-label={`Remove ${s.name}`}>
                       Remove
@@ -231,7 +230,7 @@ export default function Onboarding({ initial, onFinish, onImportPlan, aiState })
         {step === 2 && (
           <>
             <h1 className="setup-title">Your week</h1>
-            <p className="lead">Add classes, labs and mess timings so quests only land in your free time. You can skip this and add it later.</p>
+            <p className="lead">Add classes, work, meals and other fixed plans so quests only land in your free time. You can skip this and add it later.</p>
 
             <WeekEditor
               busy={prefs.busy}
@@ -294,7 +293,7 @@ export default function Onboarding({ initial, onFinish, onImportPlan, aiState })
       )}
 
       {syllabusOpen && (
-        <SyllabusImport
+        <StudyImport
           existing={subjects}
           aiState={aiState}
           onApply={(list) => {

@@ -45,7 +45,7 @@ export default function Stats({ progress, subjects }) {
             <div key={d.date} className={`bar-col ${i === 6 ? "is-today" : ""}`} title={`${formatDay(parseISODate(d.date))}: ${hm(d.minutes)}, ${d.quests} quests`}>
               <span className="bar-val">{d.minutes ? hm(d.minutes) : ""}</span>
               <div className="bar" style={{ height: `${(d.minutes / max) * 100}%` }} />
-              <span className="bar-day">{i === 6 ? "Today" : parseISODate(d.date).toLocaleDateString("en-IN", { weekday: "short" })}</span>
+              <span className="bar-day">{i === 6 ? "Today" : parseISODate(d.date).toLocaleDateString(undefined, { weekday: "short" })}</span>
             </div>
           ))}
         </div>

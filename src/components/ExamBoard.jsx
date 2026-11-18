@@ -2,10 +2,11 @@
 // Status comes from the urgency score:
 //   Critical -> DANGER,   High -> ATTACK,   Medium -> ON TRACK,   Low -> CHILL
 //   all chapters done -> DEFEATED,   exam day -> TODAY,   exam over -> DONE
+//   no deadline (just learning) -> STEADY, listed last
 import { useEffect, useState } from "react";
 import SplitFlap from "./SplitFlap.jsx";
 import { urgencyBreakdown, urgencyLevel } from "../utils/urgency.js";
-import { daysBetween, parseISODate } from "../utils/dates.js";
+import { daysBetween, hasDeadline, parseISODate } from "../utils/dates.js";
 
 const STATUS = {
   Critical: { text: "DANGER", tone: "red" },
@@ -14,10 +15,11 @@ const STATUS = {
   Low: { text: "CHILL", tone: "green" },
 };
 
-// "2026-10-12" -> "12 OCT"
+// "2026-10-12" -> "12 OCT" (or "OCT 12" in the US: the person's own date style)
 function boardDate(iso) {
+  if (!iso) return "--";
   return parseISODate(iso)
-    .toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
+    .toLocaleDateString(undefined, { day: "2-digit", month: "short" })
     .toUpperCase();
 }
 
@@ -28,7 +30,7 @@ function useClock() {
     const t = setInterval(() => setNow(new Date()), 15000);
     return () => clearInterval(t);
   }, []);
-  return now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  return now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function ExamBoard({ subjects }) {
@@ -37,9 +39,14 @@ export default function ExamBoard({ subjects }) {
   const rows = subjects
     .map((s) => {
       const u = urgencyBreakdown(s);
-      const realDays = daysBetween(new Date(), parseISODate(s.examDate));
-      const over = realDays < 0;
-      const status = realDays === 0
+      const steady = !hasDeadline(s);
+      const realDays = steady ? null : daysBetween(new Date(), parseISODate(s.examDate));
+      const over = !steady && realDays < 0;
+      const status = steady
+        ? u.chaptersLeft === 0
+          ? { text: "DEFEATED", tone: "green" }
+          : { text: "STEADY", tone: "paper" }
+        : realDays === 0
         ? { text: "EXAM DAY", tone: "red" }
         : over
         ? { text: "DONE", tone: "dim" }
@@ -50,7 +57,7 @@ export default function ExamBoard({ subjects }) {
           : STATUS[urgencyLevel(u.score).label];
       return { s, u, realDays, over, status };
     })
-    .sort((a, b) => a.s.examDate.localeCompare(b.s.examDate));
+    .sort((a, b) => (a.s.examDate || "9999").localeCompare(b.s.examDate || "9999"));
 
   return (
     <div className="board">
@@ -78,7 +85,7 @@ export default function ExamBoard({ subjects }) {
               <SplitFlap text={boardDate(s.examDate)} size={6} delay={i * 2 + 2} />
             </span>
             <span role="cell" className="col-num">
-              <SplitFlap text={Math.max(0, realDays)} size={2} align="right" delay={i * 2 + 3} tone="yellow" />
+              <SplitFlap text={realDays === null ? "--" : Math.max(0, realDays)} size={2} align="right" delay={i * 2 + 3} tone="yellow" />
             </span>
             <span role="cell" className="col-num col-left">
               <SplitFlap text={u.chaptersLeft} size={2} align="right" delay={i * 2 + 4} />
