@@ -1,7 +1,7 @@
 {
   "name": "Cramwise - study planner",
   "short_name": "Cramwise",
-  "description": "Turns your exams, classes and mess timings into daily study quests.",
+  "description": "A study planner game: upload your exam timetable and syllabus, get daily study quests around your classes and meals, beat exam bosses and level up.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
