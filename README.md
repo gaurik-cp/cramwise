@@ -23,13 +23,15 @@ To switch on Google sign-in and AI, see **SETUP-ONLINE.md**.
 - **Bosses**: each exam is a boss, HP = chapters left; add chapter names to get "next chapter" hints
 - **Import**: upload your exam timetable and/or syllabus; the AI fills in subjects, exam dates and times, and chapters, and you check them in one table first
 - **No deadline?** Things you're just learning (a language, coding...) get steady study time every week, with no countdown
+- **Your difficulty, your call**: you rate how hard each subject is for you; nothing is guessed for you
+- **Meals and per-day hours**: breakfast, lunch and dinner are blocked out; each weekday can have its own study hours ("start after my last class")
 - **Works worldwide**: dates and times follow your own country's style (5 Dec vs Dec 5, 24-hour vs AM/PM)
 - **Week**: day view of your timetable around classes, work and meal times (works past midnight)
 - **Cards**: flashcards with spaced repetition (right = comes back in 1, 2, 4, 7, 14 days; wrong = tomorrow). The AI can write them from a chapter
 - **Revision rounds**: every chapter you finish comes back as a 15-minute revision 1, 3 and 7 days later
 - **Exam week**: 3 days before an exam that subject becomes revision-only, with your weak chapters (from quiz scores) and a one-tap quick quiz
 - **Progress**: hours this week, a 7-day chart, time per subject, friends leaderboard (weekly XP, shared streaks), trophies
-- **AI coach** (needs a Gemini key): quizzes, a study helper chat, plan advice, reading timetable photos and syllabi
+- **AI coach** (needs a Gemini key): medium-to-hard quizzes (MCQ, written or mixed; problems only for maths-type subjects, theory + problems where both apply; AI marking for written answers), a study helper chat, plan advice, reading timetable photos and syllabi
 - **Phone app**: install it to your home screen (works offline once loaded, reminders as phone notifications)
 - Menu: appearance (dark / light / auto + 4 accent colours), reminders, PDF, Google Calendar (.ics), backups, edit setup
 

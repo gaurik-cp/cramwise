@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { addDays, toISODate } from "../utils/dates.js";
 import { inkFor } from "../utils/colors.js";
-import { parseTopicList } from "../utils/subjects.js";
+import { parseTopicList, suggestShort } from "../utils/subjects.js";
 import DeadlineField from "./DeadlineField.jsx";
 
 export default function BossEditor({ subject, count, existing = [], onSave, onDelete, onClose }) {
@@ -12,7 +12,10 @@ export default function BossEditor({ subject, count, existing = [], onSave, onDe
   // "" = no deadline (just learning)
   const [examDate, setExamDate] = useState(subject ? subject.examDate ?? "" : toISODate(addDays(new Date(), 14)));
   const [examTime, setExamTime] = useState(subject?.examTime ?? "");
-  const [difficulty, setDifficulty] = useState(subject?.difficulty ?? 3);
+  // No difficulty is picked for you: only you know how hard a subject is for you
+  const [difficulty, setDifficulty] = useState(subject?.difficulty ?? null);
+  const [code, setCode] = useState(subject?.code ?? "");
+  const [short, setShort] = useState(subject?.short ?? "");
   const [total, setTotal] = useState(subject?.totalChapters ?? 8);
   const [done, setDone] = useState(subject?.chaptersDone ?? 0);
   const [topicText, setTopicText] = useState((subject?.topics ?? []).map((t) => t.name).join("\n"));
@@ -30,6 +33,7 @@ export default function BossEditor({ subject, count, existing = [], onSave, onDe
 
   function save() {
     if (!name.trim()) return setError("Give the subject a name.");
+    if (!difficulty) return setError("Pick how hard this is for you (1 to 5).");
     if (existing.some((s) => s.id !== subject?.id && s.name.toLowerCase() === name.trim().toLowerCase()))
       return setError(`You already have a boss called ${name.trim()}.`);
     if (names.length === 0 && (!Number.isInteger(Number(total)) || !Number.isInteger(Number(done))))
@@ -43,6 +47,8 @@ export default function BossEditor({ subject, count, existing = [], onSave, onDe
       examDate,
       examTime: examDate && examTime ? examTime : undefined,
       difficulty,
+      code: code.trim() || undefined,
+      short: short.trim().toUpperCase() || undefined,
     };
     if (names.length > 0) {
       // Keep the ticks on chapters that were already there (matched by name)
@@ -69,6 +75,20 @@ export default function BossEditor({ subject, count, existing = [], onSave, onDe
             <span>Subject</span>
             <input ref={firstRef} className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Calculus, Biology, Learn Spanish" />
           </label>
+          <label className="field">
+            <span>Course code (optional)</span>
+            <input className="input" value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. CS 301" maxLength={20} />
+          </label>
+          <label className="field">
+            <span>Short name for the boss board</span>
+            <input
+              className="input"
+              value={short}
+              onChange={(e) => setShort(e.target.value)}
+              placeholder={suggestShort(name || "Subject", code)}
+              maxLength={10}
+            />
+          </label>
           <DeadlineField
             examDate={examDate}
             examTime={examTime}
@@ -78,7 +98,7 @@ export default function BossEditor({ subject, count, existing = [], onSave, onDe
             }}
           />
           <div className="field span-all">
-            <span>How hard? (1 easy, 5 brutal)</span>
+            <span>How hard is this for you? (1 easy, 5 brutal)</span>
             <div className="scale" role="radiogroup" aria-label="Difficulty">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button key={n} role="radio" aria-checked={difficulty === n} className={difficulty === n ? "on" : ""} onClick={() => setDifficulty(n)}>

@@ -17,7 +17,8 @@ const ORDER = [1, 2, 3, 4, 5, 6, 0];
 const STEPS = ["You", "Bosses", "Your week"];
 
 function emptySubject() {
-  return { name: "", difficulty: 3, examDate: toISODate(addDays(new Date(), 14)), totalChapters: 8, chaptersDone: 0 };
+  // Difficulty starts empty on purpose: only the student knows how hard it is for them
+  return { name: "", difficulty: null, examDate: toISODate(addDays(new Date(), 14)), totalChapters: 8, chaptersDone: 0 };
 }
 
 export default function Onboarding({ initial, onFinish, onImportPlan, aiState }) {
@@ -45,6 +46,7 @@ export default function Onboarding({ initial, onFinish, onImportPlan, aiState })
 
   function addSubject() {
     if (!draft.name.trim()) return setError("Type the subject name first.");
+    if (!draft.difficulty) return setError("Pick how hard this subject is for you (1 to 5).");
     if (subjects.some((s) => s.name.toLowerCase() === draft.name.trim().toLowerCase()))
       return setError(`You already added ${draft.name.trim()}. Remove it first if you want to change it.`);
     if (!Number.isInteger(Number(draft.totalChapters)) || !Number.isInteger(Number(draft.chaptersDone)))
@@ -189,7 +191,7 @@ export default function Onboarding({ initial, onFinish, onImportPlan, aiState })
               </label>
               <DeadlineField examDate={draft.examDate} examTime={draft.examTime ?? ""} onChange={(v) => setDraft({ ...draft, ...v })} />
               <div className="field f-diff">
-                <span>How hard? (1 easy, 5 brutal)</span>
+                <span>How hard is this for you? (1 easy, 5 brutal)</span>
                 <div className="scale" role="radiogroup" aria-label="Difficulty">
                   {[1, 2, 3, 4, 5].map((n) => (
                     <button
@@ -240,6 +242,7 @@ export default function Onboarding({ initial, onFinish, onImportPlan, aiState })
               aiState={aiState}
               batchHint={prefs.batchHint ?? ""}
               setBatchHint={(batchHint) => setPrefs({ ...prefs, batchHint })}
+              subjects={subjects}
             />
 
             <details className="study-settings" open={!initial?.prefs}>

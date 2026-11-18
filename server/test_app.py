@@ -226,6 +226,49 @@ class CramwiseTests(unittest.TestCase):
         self.assertEqual(saved["Physics"]["examTime"], "14:00")
         self.assertNotIn("examTime", saved["Bad time"])
 
+    @mock.patch("ai.requests.post")
+    def test_rate_limited_model_falls_back_to_next(self, post):
+        post.side_effect = [FakeResponse("limit", 429), FakeResponse("Answer from the next model.")]
+        self.login()
+        r = self.c.post("/api/ai/chat", headers=H, json={"messages": [{"role": "user", "text": "hi"}]})
+        self.assertEqual(r.status_code, 200, r.get_json())
+        self.assertEqual(post.call_count, 2)
+
+    @mock.patch("ai.requests.post")
+    def test_reading_jobs_use_the_fast_model_first(self, post):
+        post.return_value = FakeResponse(json.dumps({"exams": []}))
+        self.login()
+        self.c.post("/api/ai/exams", headers=H, data={"text": "x"}, content_type="multipart/form-data")
+        self.assertIn("flash-lite", post.call_args.args[0])
+
+    @mock.patch("ai.requests.post")
+    def test_mixed_quiz_keeps_mcq_and_written(self, post):
+        post.return_value = FakeResponse(json.dumps({"questions": [
+            {"type": "mcq", "kind": "problem", "question": "d/dx x^3 at x=2?", "options": ["12", "8", "6", "4"], "answer": 0, "explanation": "3x^2 = 12"},
+            {"type": "written", "kind": "theory", "question": "Explain 2NF.", "modelAnswer": "No partial dependency...", "keyPoints": ["partial dependency", "candidate key"]},
+            {"type": "written", "question": "No model answer"},
+            {"type": "mcq", "question": "bool answer", "options": ["a", "b", "c", "d"], "answer": True},
+        ]}))
+        self.login()
+        r = self.c.post("/api/ai/quiz", headers=H, json={"subject": "Maths", "topic": "derivatives", "format": "mixed", "style": "problems", "chapters": ["Limits"]})
+        body = r.get_json()
+        self.assertEqual(r.status_code, 200, body)
+        self.assertEqual([q["type"] for q in body["questions"]], ["mcq", "written"])
+        prompt = post.call_args.kwargs["json"]["contents"][0]["parts"][0]["text"]
+        self.assertIn("ONLY problems", prompt)
+        self.assertIn("MEDIUM to HARD", prompt)
+        self.assertIn("Limits", prompt)
+
+    @mock.patch("ai.requests.post")
+    def test_check_written_answer(self, post):
+        post.return_value = FakeResponse(json.dumps({"score": 14, "verdict": "Good", "feedback": "Right method.", "missing": ["units"]}))
+        self.login()
+        r = self.c.post("/api/ai/check", headers=H, json={"question": "q", "modelAnswer": "m", "keyPoints": ["k"], "answer": "my answer"})
+        body = r.get_json()
+        self.assertEqual(r.status_code, 200, body)
+        self.assertEqual(body["score"], 10)  # clamped
+        self.assertEqual(self.c.post("/api/ai/check", headers=H, json={"question": "q", "answer": ""}).status_code, 400)
+
     def test_syllabus_needs_input(self):
         self.login()
         r = self.c.post("/api/ai/syllabus", headers=H, data={}, content_type="multipart/form-data")

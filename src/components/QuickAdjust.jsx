@@ -6,13 +6,14 @@
 import { useEffect, useState } from "react";
 import WeekEditor from "./WeekEditor.jsx";
 import { addDays, formatDay, formatTime, parseISODate, toISODate } from "../utils/dates.js";
+import { windowsAfterClasses } from "../utils/scheduler.js";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const ORDER = [1, 2, 3, 4, 5, 6, 0];
 const SESSION_CHOICES = [25, 45, 50, 60, 90];
 const BREAK_CHOICES = [0, 5, 10, 15, 20];
 
-export default function QuickAdjust({ prefs, onChange, aiState, only }) {
+export default function QuickAdjust({ prefs, onChange, aiState, only, subjects = [] }) {
   const todayISO = toISODate(new Date());
   const tomorrowISO = toISODate(addDays(new Date(), 1));
   const [day, setDay] = useState(todayISO);
@@ -183,6 +184,7 @@ export default function QuickAdjust({ prefs, onChange, aiState, only }) {
               <span className="muted">and</span>
               <input type="time" className="input qa-time" aria-label="Latest finish" value={prefs.dayEnd} onChange={(e) => e.target.value && setWeekly("dayEnd", e.target.value)} />
             </div>
+            <DayWindows prefs={prefs} onChange={onChange} />
 
             <div className="qa-row">
               <span className="qa-label">Rest days</span>
@@ -206,14 +208,14 @@ export default function QuickAdjust({ prefs, onChange, aiState, only }) {
       )}
 
       {weekOpen && (
-        <WeekModal prefs={prefs} onChange={onChange} aiState={aiState} onClose={() => setWeekOpen(false)} />
+        <WeekModal prefs={prefs} onChange={onChange} aiState={aiState} subjects={subjects} onClose={() => setWeekOpen(false)} />
       )}
     </div>
   );
 }
 
 // Classes/labs/meals editor in a pop-up (same editor as setup, changes save live)
-function WeekModal({ prefs, onChange, aiState, onClose }) {
+function WeekModal({ prefs, onChange, aiState, subjects, onClose }) {
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
@@ -240,6 +242,7 @@ function WeekModal({ prefs, onChange, aiState, onClose }) {
           aiState={aiState}
           batchHint={prefs.batchHint ?? ""}
           setBatchHint={(batchHint) => onChange({ ...prefs, batchHint })}
+          subjects={subjects}
         />
       </div>
     </div>
@@ -286,4 +289,68 @@ function describe(c) {
 function plusHours(t, h) {
   const [hh, mm] = t.split(":").map(Number);
   return `${String(Math.min(23, hh + h)).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
+// Different study hours on some days, e.g. classes end at 1 PM on Wednesdays,
+// so you can start studying earlier that day.
+function DayWindows({ prefs, onChange }) {
+  const windows = prefs.dayWindows ?? {};
+  const custom = Object.keys(windows).length;
+  const [open, setOpen] = useState(custom > 0);
+  const hasClasses = prefs.busy.some((b) => b.kind === "class" || b.kind === "lab");
+  const set = (next) => onChange({ ...prefs, dayWindows: next });
+  const setDay = (d, patch) => set({ ...windows, [d]: { start: prefs.dayStart, end: prefs.dayEnd, ...windows[d], ...patch } });
+  const reset = (d) => {
+    const next = { ...windows };
+    delete next[d];
+    set(next);
+  };
+
+  if (!open) {
+    return (
+      <div className="qa-row">
+        <span className="qa-label" />
+        <button className="link-btn" onClick={() => setOpen(true)}>
+          Different hours on some days?
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="day-windows">
+      <div className="day-windows-head">
+        <span className="qa-label">Hours per day</span>
+        {hasClasses && (
+          <button className="btn btn-ghost btn-small" onClick={() => set(windowsAfterClasses(prefs))} title="On days with classes, start 15 minutes after the last one ends">
+            Start after my last class each day
+          </button>
+        )}
+      </div>
+      <ul>
+        {ORDER.map((d) => {
+          const w = windows[d];
+          return (
+            <li key={d} className={w ? "is-custom" : ""}>
+              <span className="dw-day">{WEEKDAYS[d]}</span>
+              <input type="time" className="input qa-time" aria-label={`${WEEKDAYS[d]} start`} value={w?.start ?? prefs.dayStart} onChange={(e) => e.target.value && setDay(d, { start: e.target.value })} />
+              <span className="muted">to</span>
+              <input type="time" className="input qa-time" aria-label={`${WEEKDAYS[d]} end`} value={w?.end ?? prefs.dayEnd} onChange={(e) => e.target.value && setDay(d, { end: e.target.value })} />
+              {w ? (
+                <button className="link-btn" onClick={() => reset(d)}>
+                  Usual
+                </button>
+              ) : (
+                <span className="muted dw-usual">usual</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {custom > 0 && (
+        <button className="link-btn" onClick={() => set({})}>
+          Use the same hours every day
+        </button>
+      )}
+    </div>
+  );
 }

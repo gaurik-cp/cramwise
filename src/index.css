@@ -630,6 +630,11 @@ code { font-family: var(--font-pixel); font-size: 0.85em; color: var(--mana); }
 .imp-nodate { font-size: 0.85rem; }
 .imp-num { width: 76px !important; }
 .imp-from { grid-column: 1 / -1; font-size: 0.8rem; color: var(--muted); }
+.imp-naming { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; font-size: 0.9rem; font-weight: 600; }
+.imp-diff { font-size: 0.85rem; }
+.small-scale { gap: 4px; }
+.small-scale button { flex: 0 0 34px; padding: 5px 0; font-size: 0.8rem; }
+.imp-need { font-size: 0.82rem; align-self: center; }
 .syl-list { list-style: none; display: flex; flex-direction: column; gap: 12px; max-height: 55vh; overflow-y: auto; padding-right: 4px; }
 .syl-list > li { background: var(--panel-2); border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; }
 .syl-list > li.is-off { opacity: 0.5; }
@@ -906,6 +911,24 @@ code { font-family: var(--font-pixel); font-size: 0.85em; color: var(--mana); }
 .qa-list-what { flex: 1; color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tt-once { color: var(--mana); }
 .modal-xwide { width: min(1080px, 100%); }
+/* Different study hours on some days */
+.day-windows { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: 2px dashed var(--line); border-radius: 12px; }
+.day-windows-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.day-windows ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.day-windows li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.9rem; }
+.day-windows li.is-custom .dw-day { color: var(--gold); }
+.dw-day { width: 40px; font-weight: 700; }
+.dw-usual { font-size: 0.8rem; }
+/* Meal times */
+.meals { background: var(--panel-2); border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; }
+.meals-title { font-family: var(--font-head); font-size: 0.95rem; }
+.meals-sub { font-size: 0.82rem; margin-bottom: 8px; }
+.meals ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.meals li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.meals li.is-off .meal-pick span { color: var(--muted); }
+.meal-pick { display: flex; align-items: center; gap: 8px; width: 110px; font-weight: 700; cursor: pointer; }
+.meal-pick input { width: 18px; height: 18px; accent-color: var(--xp); }
+.meal-days { font-size: 0.8rem; }
 
 /* Light theme: the night sky would look odd on a light page, so it's hidden */
 :root[data-theme="light"] .backdrop { display: none; }
@@ -979,4 +1002,32 @@ code { font-family: var(--font-pixel); font-size: 0.85em; color: var(--mana); }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
+}
+
+/* Quiz: type + style, written answers */
+.quiz-options-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: -4px 0 12px; }
+.quiz-tags { display: flex; gap: 6px; margin-bottom: 4px; }
+.quiz-tags span { font-family: var(--font-pixel); font-size: 0.65rem; padding: 1px 7px; border-radius: 5px; background: var(--well); color: var(--muted); border: 1px solid var(--line); }
+.written { display: flex; flex-direction: column; gap: 8px; }
+.written-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.model-answer { background: var(--well); border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.model-title { font-family: var(--font-pixel); font-size: 0.72rem; color: var(--mana); text-transform: uppercase; }
+.model-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.model-answer ul { margin-left: 18px; color: var(--muted); font-size: 0.9rem; }
+.check-result { border-radius: 12px; padding: 10px 12px; border: 2px solid var(--line); }
+.check-result.is-good { border-color: var(--xp); background: color-mix(in srgb, var(--xp) 8%, transparent); }
+.check-result.is-low { border-color: var(--hp); background: color-mix(in srgb, var(--hp) 8%, transparent); }
+.make-ai-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+/* Trophy groups + progress towards each one */
+.trophy-group { margin-bottom: 18px; }
+.trophy-group-title { font-family: var(--font-head); font-size: 0.95rem; font-weight: 400; margin-bottom: 8px; }
+.trophy-group-title .muted { font-family: var(--font-pixel); font-size: 0.72rem; }
+.trophy-bar { position: relative; display: block; width: 100%; height: 14px; margin-top: 6px; background: var(--well); border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.trophy-bar i { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--gold) 55%, transparent); }
+.trophy-bar b { position: relative; display: block; text-align: center; font-family: var(--font-pixel); font-weight: 400; font-size: 0.6rem; line-height: 12px; color: var(--text); }
+@media (max-width: 760px) {
+  .day-windows li { gap: 6px; }
+  .day-windows li .qa-time { flex: 1 1 96px; min-width: 0; padding: 6px 8px; }
+  .dw-day { width: 36px; }
 }

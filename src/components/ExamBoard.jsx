@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import SplitFlap from "./SplitFlap.jsx";
 import { urgencyBreakdown, urgencyLevel } from "../utils/urgency.js";
 import { daysBetween, hasDeadline, parseISODate } from "../utils/dates.js";
+import { boardName } from "../utils/subjects.js";
 
 const STATUS = {
   Critical: { text: "DANGER", tone: "red" },
@@ -79,7 +80,7 @@ export default function ExamBoard({ subjects }) {
           <div className={`board-row ${over ? "is-over" : ""}`} role="row" key={s.id}>
             <span role="cell" className="cell-subject">
               <i className="board-ink" style={{ background: s.color }} />
-              <SplitFlap text={s.name} size={10} delay={i * 2} />
+              <SplitFlap text={boardName(s)} size={10} delay={i * 2} />
             </span>
             <span role="cell" className="col-date">
               <SplitFlap text={boardDate(s.examDate)} size={6} delay={i * 2 + 2} />

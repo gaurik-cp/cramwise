@@ -32,8 +32,9 @@ export default function Cards({ subjects, progress, aiOn, onAdd, onReview, onDel
             </button>
           </div>
           <p className="muted panel-sub">
-            Spaced repetition: a card you get right comes back later and later ({BOX_DAYS.join(", ")} days). One you miss
-            comes back tomorrow. +{CARD_XP} XP per card reviewed.
+            Flashcards = a question on the front, the answer on the back. Answer it in your head (or on paper), flip it,
+            then say honestly if you got it. Cards you get right come back later and later ({BOX_DAYS.join(", ")} days),
+            ones you miss come back tomorrow, so you spend time only on what you don't know yet. +{CARD_XP} XP per card.
           </p>
           <MakeCards subjects={subjects} progress={progress} aiOn={aiOn} onAdd={onAdd} />
           <Decks subjects={subjects} cards={progress.cards} onDelete={onDelete} />
@@ -133,6 +134,7 @@ function MakeCards({ subjects, progress, aiOn, onAdd }) {
   // Suggest the chapter you finished most recently (best time to make cards)
   const lastDone = [...(progress.chapterLog ?? [])].reverse().find((e) => e.subjectId === subjectId)?.name;
   const [topic, setTopic] = useState("");
+  const [style, setStyle] = useState("auto"); // theory, problems or both (auto = fits the subject)
   const [front, setFront] = useState("");
   const [back, setBack] = useState("");
   const [loading, setLoading] = useState(false);
@@ -146,7 +148,7 @@ function MakeCards({ subjects, progress, aiOn, onAdd }) {
     setError("");
     setMsg("");
     try {
-      const { cards } = await api("/api/ai/flashcards", { method: "POST", json: { subject: subject?.name, topic: t, count: 8 } });
+      const { cards } = await api("/api/ai/flashcards", { method: "POST", json: { subject: subject?.name, topic: t, count: 8, style } });
       onAdd(cards.map((c) => ({ ...c, subjectId, topic: t })));
       setMsg(`Added ${cards.length} cards on ${t}. They're ready to review now.`);
       setTopic("");
@@ -190,9 +192,17 @@ function MakeCards({ subjects, progress, aiOn, onAdd }) {
         />
       </label>
       {aiOn && (
+        <div className="make-ai-row">
+        <select className="input select-small" value={style} onChange={(e) => setStyle(e.target.value)} aria-label="Theory or problems">
+          <option value="auto">Auto (fits the subject)</option>
+          <option value="problems">Problems only</option>
+          <option value="both">Theory + problems</option>
+          <option value="theory">Theory only</option>
+        </select>
         <button className="btn btn-primary make-ai" onClick={makeWithAI} disabled={loading}>
           {loading ? "Writing cards…" : "Make 8 cards with AI"}
         </button>
+        </div>
       )}
       <form className="own-card" onSubmit={addOwn}>
         <p className="muted">{aiOn ? "Or write your own:" : "Write your own cards (the AI can make them too once it's on):"}</p>

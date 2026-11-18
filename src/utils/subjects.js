@@ -86,6 +86,8 @@ export function cleanSubjects(list) {
         name: s.name.trim().slice(0, 40),
         examDate: isDate(s.examDate) ? s.examDate : "",
         examTime: /^\d{2}:\d{2}$/.test(s.examTime ?? "") ? s.examTime : undefined,
+        code: typeof s.code === "string" && s.code.trim() ? s.code.trim().slice(0, 20) : undefined,
+        short: typeof s.short === "string" && s.short.trim() ? s.short.trim().slice(0, 10) : undefined,
         difficulty: int(s.difficulty, 3, 1, 5),
         totalChapters: total,
         chaptersDone: int(s.chaptersDone, 0, 0, total),
@@ -93,3 +95,34 @@ export function cleanSubjects(list) {
       });
     });
 }
+
+// ─── Short names for the boss board (it only fits 10 letters) ───
+// "Database Management Systems" -> "DBMS", "Calculus II" -> "CALC II",
+// "English Literature" -> "ENG LIT", "Physics" -> "PHYSICS".
+// The person can always type their own short name in the boss editor.
+const STOP = new Set(["and", "of", "the", "to", "in", "for", "&", "with", "a", "an", "on", "introduction", "intro", "learn", "learning", "basics", "fundamentals", "principles"]);
+const ROMAN = /^(i{1,3}|iv|v|vi{0,3}|ix|x|\d+)$/i;
+export function suggestShort(name, code) {
+  const clean = (name ?? "").trim();
+  if (clean.length <= 10) return clean.toUpperCase();
+  const words = clean.split(/[\s\-:,/]+/).filter(Boolean);
+  const tail = words.length > 1 && ROMAN.test(words[words.length - 1]) ? words.pop().toUpperCase() : "";
+  const main = words.filter((w) => !STOP.has(w.toLowerCase()));
+  let short;
+  if (main.length >= 3) {
+    short = main.map((w) => (/^database/i.test(w) ? "DB" : w[0])).join("").toUpperCase();
+  } else if (main.length === 2) {
+    // "Theory of Computation" -> "TOC" (with the small words), else "Linear Algebra" -> "LIN ALG"
+    const withSmall = words.map((w) => w[0]).join("");
+    short = (withSmall.length >= 3 ? withSmall : main.map((w) => w.slice(0, 3)).join(" ")).toUpperCase();
+  } else {
+    const w = main[0] ?? clean;
+    short = (tail || w.length > 10 ? w.slice(0, 4) : w).toUpperCase();
+  }
+  let out = tail ? `${short} ${tail}` : short;
+  if (out.length > 10 && tail) out = `${main.map((w) => w[0]).join("").toUpperCase()} ${tail}`; // "EM III"
+  if (out.length <= 10) return out;
+  const c = (code ?? "").trim();
+  return c && c.length <= 10 ? c.toUpperCase() : out.slice(0, 10);
+}
+export const boardName = (s) => s.short || suggestShort(s.name, s.code);

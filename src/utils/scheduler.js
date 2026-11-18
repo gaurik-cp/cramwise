@@ -50,9 +50,57 @@ export function normalizePrefs(prefs = {}) {
     breakLength: num(prefs.breakLength, 10, 0, 120),
     planDays: num(prefs.planDays, 14, 1, 60),
     restDays: Array.isArray(prefs.restDays) ? prefs.restDays.filter((d) => d >= 0 && d <= 6).slice(0, 6) : [0],
-    busy: Array.isArray(prefs.busy) ? prefs.busy : [],
+    busy: withMeals(prefs),
+    mealsSet: true,
+    dayWindows: cleanWindows(prefs.dayWindows),
     changes: cleanChanges(prefs.changes),
   };
+}
+
+// ─── Meals ───
+// Everyone eats, so breakfast, lunch and dinner are blocked out by default
+// (you can change the times or remove them in "Classes, work & meals").
+// Only added once: if you delete them, they stay deleted.
+export const DEFAULT_MEALS = [
+  { id: "meal-breakfast", label: "Breakfast", start: "08:00", end: "08:30" },
+  { id: "meal-lunch", label: "Lunch", start: "13:00", end: "13:45" },
+  { id: "meal-dinner", label: "Dinner", start: "20:00", end: "20:45" },
+];
+function withMeals(prefs) {
+  const busy = Array.isArray(prefs.busy) ? prefs.busy : [];
+  if (prefs.mealsSet || busy.some((b) => b.kind === "meal")) return busy;
+  return [...busy, ...DEFAULT_MEALS.map((m) => ({ ...m, kind: "meal", days: [0, 1, 2, 3, 4, 5, 6] }))];
+}
+
+// ─── Different study hours on some days ───
+// e.g. { "3": { start: "13:30", end: "23:00" } } = on Wednesdays study from 1:30 PM
+function cleanWindows(w) {
+  if (!w || typeof w !== "object" || Array.isArray(w)) return {};
+  const ok = (t) => /^\d{2}:\d{2}$/.test(t ?? "");
+  const out = {};
+  for (const [d, v] of Object.entries(w)) {
+    if (/^[0-6]$/.test(d) && v && ok(v.start) && ok(v.end)) out[d] = { start: v.start, end: v.end };
+  }
+  return out;
+}
+// The study window for one weekday (its own times, or the usual ones)
+export function windowFor(prefs, weekday) {
+  return prefs.dayWindows?.[weekday] ?? { start: prefs.dayStart, end: prefs.dayEnd };
+}
+
+// "Start right after my last class": for each weekday with classes or labs,
+// begin studying 15 minutes after the last one ends (if that's later than usual)
+export function windowsAfterClasses(prefs) {
+  const out = {};
+  for (let d = 0; d < 7; d++) {
+    const classes = prefs.busy.filter((b) => (b.kind === "class" || b.kind === "lab") && b.days.includes(d));
+    if (!classes.length) continue;
+    const lastEnd = Math.max(...classes.map((b) => timeToMinutes(b.end)));
+    const start = lastEnd + 15;
+    if (start >= 24 * 60) continue;
+    out[d] = { start: minutesToTime(start), end: prefs.dayEnd };
+  }
+  return out;
 }
 
 // One-off changes for a single date ("just this once"), e.g.
@@ -94,10 +142,11 @@ export function busyFor(prefs, weekday, isoDate) {
 export function findSlots(prefs, weekday, maxSlots, isoDate) {
   const len = Math.max(15, Number(prefs.sessionLength) || 50);
   const brk = Math.max(0, Number(prefs.breakLength) || 0);
-  const dayStart = timeToMinutes(prefs.dayStart);
+  const win = windowFor(prefs, weekday); // some days can have their own study hours
+  const dayStart = timeToMinutes(win.start);
   // A finish time EARLIER than the start means "after midnight", e.g. 17:05 -> 00:30.
   // So we add 24 hours (1440 minutes) to it: 00:30 becomes 24:30.
-  let dayEnd = timeToMinutes(prefs.dayEnd);
+  let dayEnd = timeToMinutes(win.end);
   if (dayEnd <= dayStart) dayEnd += 24 * 60;
 
   // Turn fixed blocks into "no-go" ranges (with a gap before and after)

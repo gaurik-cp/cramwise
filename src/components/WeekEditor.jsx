@@ -17,7 +17,7 @@ const AI_OFF_TEXT = {
   nokey: "The AI can't read it yet: there's no Gemini API key in server/.env (see SETUP-ONLINE.md). For now, copy it into the form below while looking at it.",
 };
 
-export default function WeekEditor({ busy, setBusy, dayStart, dayEnd, aiState, batchHint = "", setBatchHint = () => {} }) {
+export default function WeekEditor({ busy, setBusy, dayStart, dayEnd, aiState, batchHint = "", setBatchHint = () => {}, subjects = [] }) {
   const aiOn = aiState === "on";
   const [dragging, setDragging] = useState(false);
   const [info, setInfo] = useState(""); // neutral explanations (e.g. why AI is off)
@@ -87,11 +87,16 @@ export default function WeekEditor({ busy, setBusy, dayStart, dayEnd, aiState, b
       const form = new FormData();
       form.append("file", file);
       if (batchHint.trim()) form.append("hint", batchHint.trim());
+      // Your subjects, so "CS301" on the timetable is labelled the way you named it (e.g. "DBMS")
+      form.append("subjects", JSON.stringify(subjects.map((s) => ({ name: s.name, code: s.code ?? "" }))));
       const { blocks, remaining } = await api("/api/ai/timetable", { method: "POST", form });
       if (blocks.length === 0) {
         setError("The AI couldn't find a timetable in that file. Try a clearer photo, or add things by hand.");
       } else {
-        setBusy([...busy, ...blocks.map((b) => ({ ...b, id: crypto.randomUUID() }))]);
+        // Meals read from the timetable replace your usual meal of the same name (no double dinner)
+        const newMeals = new Set(blocks.filter((b) => b.kind === "meal").map((b) => b.label.toLowerCase()));
+        const kept = busy.filter((b) => !(b.kind === "meal" && newMeals.has(b.label.toLowerCase())));
+        setBusy([...kept, ...blocks.map((b) => ({ ...b, id: crypto.randomUUID() }))]);
         setNote(
           `The AI added ${blocks.length} block${blocks.length === 1 ? "" : "s"}. Check them against your timetable below, it can misread things. (${remaining} AI requests left today.)`
         );
@@ -133,6 +138,8 @@ export default function WeekEditor({ busy, setBusy, dayStart, dayEnd, aiState, b
             />
           </label>
         )}
+
+        <MealTimes busy={busy} setBusy={setBusy} />
 
         {/* Drop zone: click or drag a timetable photo onto it */}
         <label
@@ -347,4 +354,53 @@ function daysText(days) {
 function addHour(t) {
   const m = Math.min(timeToMinutes(t) + 60, 23 * 60 + 59);
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
+
+// Breakfast, lunch and dinner, every day: tick the ones you want blocked out
+// and set their times. (Meals that differ by day can be added below as usual.)
+const MEALS = [
+  { label: "Breakfast", start: "08:00", end: "08:30" },
+  { label: "Lunch", start: "13:00", end: "13:45" },
+  { label: "Dinner", start: "20:00", end: "20:45" },
+];
+function MealTimes({ busy, setBusy }) {
+  const find = (label) => busy.find((b) => b.kind === "meal" && b.label.toLowerCase() === label.toLowerCase());
+  function toggle(m) {
+    const b = find(m.label);
+    if (b) setBusy(busy.filter((x) => x !== b));
+    else setBusy([...busy, { id: crypto.randomUUID(), label: m.label, kind: "meal", days: [0, 1, 2, 3, 4, 5, 6], start: m.start, end: m.end }]);
+  }
+  function setTime(b, key, value) {
+    if (!value) return;
+    setBusy(busy.map((x) => (x === b ? { ...x, [key]: value } : x)));
+  }
+  return (
+    <div className="meals">
+      <p className="meals-title">Meal times</p>
+      <p className="muted meals-sub">Study sessions never land on these.</p>
+      <ul>
+        {MEALS.map((m) => {
+          const b = find(m.label);
+          return (
+            <li key={m.label} className={b ? "" : "is-off"}>
+              <label className="meal-pick">
+                <input type="checkbox" checked={Boolean(b)} onChange={() => toggle(m)} />
+                <span>{m.label}</span>
+              </label>
+              {b ? (
+                <>
+                  <input type="time" className="input qa-time" aria-label={`${m.label} from`} value={b.start} onChange={(e) => setTime(b, "start", e.target.value)} />
+                  <span className="muted">to</span>
+                  <input type="time" className="input qa-time" aria-label={`${m.label} until`} value={b.end} onChange={(e) => setTime(b, "end", e.target.value)} />
+                  {b.days.length < 7 && <span className="muted meal-days">some days only</span>}
+                </>
+              ) : (
+                <span className="muted meal-days">not blocked</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }

@@ -62,7 +62,7 @@ def create_app(test_config=None):
         SQLALCHEMY_DATABASE_URI=db_url,
         GOOGLE_CLIENT_ID=os.getenv("GOOGLE_CLIENT_ID", "").strip(),
         GEMINI_API_KEY=os.getenv("GEMINI_API_KEY", "").strip(),
-        GEMINI_MODEL=os.getenv("GEMINI_MODEL", "").strip() or "gemini-flash-latest",
+        GEMINI_MODEL=os.getenv("GEMINI_MODEL", "").strip(),  # optional: force one model first
         AI_DAILY_LIMIT=int(os.getenv("AI_DAILY_LIMIT", "40")),
         DEV_LOGIN=os.getenv("DEV_LOGIN", "0") == "1",
         # Login cookie settings:

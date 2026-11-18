@@ -87,6 +87,10 @@ def clean_subjects(subjects):
         }
         if isinstance(s.get("examTime"), str) and TIME.match(s["examTime"]):
             clean["examTime"] = s["examTime"]
+        # Optional course code ("CS 301") and short name for the boss board ("DBMS")
+        for key, size in (("code", 20), ("short", 10)):
+            if isinstance(s.get(key), str) and s[key].strip():
+                clean[key] = s[key].strip()[:size]
         if topics:
             clean["topics"] = topics
         out.append(clean)

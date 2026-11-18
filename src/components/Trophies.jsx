@@ -1,5 +1,5 @@
 // Trophy cabinet: unlocked ones glow, locked ones show how to get them.
-import { trophies } from "../utils/game.js";
+import { TROPHY_GROUPS, trophies } from "../utils/game.js";
 
 export default function Trophies({ progress, subjects }) {
   const list = trophies(progress, subjects);
@@ -10,17 +10,36 @@ export default function Trophies({ progress, subjects }) {
       <p className="muted trophy-count">
         {got} of {list.length} unlocked
       </p>
-      <ul className="trophies">
-        {list.map((t) => (
-          <li key={t.id} className={`trophy ${t.got ? "is-got" : ""}`}>
-            <span className="trophy-icon" aria-hidden="true">
-              <TrophyShape />
-            </span>
-            <span className="trophy-name">{t.name}</span>
-            <span className="trophy-how">{t.got ? "Unlocked" : t.how}</span>
-          </li>
-        ))}
-      </ul>
+      {TROPHY_GROUPS.map((group) => {
+        const items = list.filter((t) => t.group === group);
+        if (!items.length) return null;
+        return (
+          <section key={group} className="trophy-group">
+            <h3 className="trophy-group-title">
+              {group} <span className="muted">{items.filter((t) => t.got).length}/{items.length}</span>
+            </h3>
+            <ul className="trophies">
+              {items.map((t) => (
+                <li key={t.id} className={`trophy ${t.got ? "is-got" : ""}`} title={t.how}>
+                  <span className="trophy-icon" aria-hidden="true">
+                    <TrophyShape />
+                  </span>
+                  <span className="trophy-name">{t.name}</span>
+                  <span className="trophy-how">{t.got ? "Unlocked" : t.how}</span>
+                  {!t.got && t.progress && (
+                    <span className="trophy-bar" aria-label={`${t.progress[0]} of ${t.progress[1]}`}>
+                      <i style={{ width: `${(t.progress[0] / t.progress[1]) * 100}%` }} />
+                      <b>
+                        {t.progress[0]}/{t.progress[1]}
+                      </b>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })}
     </div>
   );
 }

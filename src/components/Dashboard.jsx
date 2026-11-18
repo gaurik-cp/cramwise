@@ -260,7 +260,7 @@ export default function Dashboard(props) {
                   {changeToday ? "Close" : "Plans changed?"}
                 </button>
               </div>
-              {changeToday && <QuickAdjust prefs={prefs} onChange={onUpdatePrefs} aiState={aiState} only="once" />}
+              {changeToday && <QuickAdjust prefs={prefs} onChange={onUpdatePrefs} aiState={aiState} only="once" subjects={subjects} />}
               <Quests
                 date={todayISO}
                 sessions={questItems}
@@ -326,7 +326,7 @@ export default function Dashboard(props) {
         {tab === "week" && (
           <>
             <h2 className="panel-title">Quick adjust</h2>
-            <QuickAdjust prefs={prefs} onChange={onUpdatePrefs} aiState={aiState} />
+            <QuickAdjust prefs={prefs} onChange={onUpdatePrefs} aiState={aiState} subjects={subjects} />
             <h2 className="panel-title spaced">Your timetable</h2>
             <p className="muted panel-sub">
               Striped = classes and labs, dotted = meals, colour = study. The yellow line is the time right now. Up to{" "}

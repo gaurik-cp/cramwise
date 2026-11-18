@@ -126,7 +126,11 @@ export function totalQuestsDone(progress) {
   return Object.values(progress.done).reduce((n, list) => n + list.length, 0);
 }
 
-// ── Trophies: each one is a rule that's either true or not ──
+// ── Trophies ──
+// Each one is a rule that's either true or not. Ones with a target also show
+// how far along you are (e.g. 7 / 10), grouped so the cabinet is easy to read.
+export const TROPHY_GROUPS = ["Sessions", "Streaks", "Study time", "Levels", "Bosses", "Cards & revision", "Quizzes", "Special"];
+
 export function trophies(progress, subjects) {
   const all = Object.values(progress.done).flat();
   const st = streak(progress);
@@ -136,19 +140,99 @@ export function trophies(progress, subjects) {
   // 04:00-07:59 counts as early; 21:00-03:59 counts as late night
   const isEarly = (t) => hour(t) >= 4 && hour(t) < 8;
   const isLate = (t) => hour(t) >= 21 || hour(t) < 4;
+  const hours = all.reduce((n, q) => n + questMinutes(q), 0) / 60;
+  const best = bestStreak(progress);
+  const days = Object.entries(progress.done).filter(([, l]) => l.length);
+  const biggestDay = Math.max(0, ...days.map(([, l]) => l.length));
+  const cards = progress.cards ?? [];
+  const mastered = cards.filter((c) => c.box >= 4).length;
+  const revisions = (progress.revDone ?? []).length;
+  const chapters = (progress.chapterLog ?? []).length;
+  const quizAll = Object.values(progress.quizStats ?? {}).flatMap((t) => Object.values(t));
+  const quizRight = quizAll.reduce((n, x) => n + (x.right ?? 0), 0);
+  const perfectTopic = quizAll.some((x) => x.total >= 5 && x.right === x.total);
+  const weekendBoth = days.some(([d]) => {
+    const day = new Date(d + "T12:00:00");
+    return day.getDay() === 6 && progress.done[toISODate(addDays(day, 1))]?.length;
+  });
+  const comeback = comebackAfterBreak(progress);
+  const steadyIds = new Set(subjects.filter((s) => !hasDeadline(s)).map((s) => s.id));
+  const steadyDone = all.filter((q) => steadyIds.has(q.subjectId)).length;
+  const fullCycle = fullRevisionCycle(progress);
+
+  const t = (group, id, name, how, cur, goal) => ({ group, id, name, how, got: cur >= goal, progress: goal > 1 ? [Math.min(cur, goal), goal] : null });
   return [
-    { id: "first", name: "First quest", how: "Finish your first study session", got: all.length >= 1 },
-    { id: "ten", name: "On a roll", how: "Finish 10 study sessions", got: all.length >= 10 },
-    { id: "fifty", name: "Grinder", how: "Finish 50 study sessions", got: all.length >= 50 },
-    { id: "s3", name: "3-day streak", how: "Study 3 days in a row", got: st >= 3 },
-    { id: "s7", name: "Week warrior", how: "Study 7 days in a row", got: st >= 7 },
-    { id: "early", name: "Early bird", how: "Finish a session that starts before 8:00", got: all.some((q) => isEarly(q.start)) },
-    { id: "owl", name: "Night owl", how: "Finish a session that starts between 21:00 and 04:00", got: all.some((q) => isLate(q.start)) },
-    { id: "lvl5", name: "Level 5", how: "Reach level 5", got: lvl >= 5 },
-    { id: "boss", name: "Boss down", how: "Finish every chapter of one subject", got: bossesDown >= 1 },
-    { id: "allboss", name: "Flawless", how: "Finish every chapter of every subject", got: subjects.length > 0 && bossesDown === subjects.length },
-    { id: "quiz", name: "Quiz whiz", how: "Earn 50 XP from AI quizzes", got: (progress.quizXp ?? 0) >= 50 },
+    t("Sessions", "first", "First quest", "Finish your first study session", all.length, 1),
+    t("Sessions", "ten", "On a roll", "Finish 10 study sessions", all.length, 10),
+    t("Sessions", "fifty", "Grinder", "Finish 50 study sessions", all.length, 50),
+    t("Sessions", "hundred", "Century", "Finish 100 study sessions", all.length, 100),
+    t("Sessions", "twofifty", "Marathon", "Finish 250 study sessions", all.length, 250),
+    t("Sessions", "bigday", "Big day", "Finish 6 sessions in one day", biggestDay, 6),
+    t("Streaks", "s3", "3-day streak", "Study 3 days in a row", best, 3),
+    t("Streaks", "s7", "Week warrior", "Study 7 days in a row", best, 7),
+    t("Streaks", "s14", "Unstoppable", "Study 14 days in a row", best, 14),
+    t("Streaks", "s30", "Iron will", "Study 30 days in a row", best, 30),
+    t("Streaks", "comeback", "Comeback", "Study again after 3+ days off", comeback ? 1 : 0, 1),
+    t("Study time", "h10", "Clocked in", "Study for 10 hours in total", Math.floor(hours), 10),
+    t("Study time", "h50", "Deep worker", "Study for 50 hours in total", Math.floor(hours), 50),
+    t("Study time", "h100", "Scholar", "Study for 100 hours in total", Math.floor(hours), 100),
+    t("Levels", "lvl5", "Level 5", "Reach level 5", lvl, 5),
+    t("Levels", "lvl10", "Level 10", "Reach level 10", lvl, 10),
+    t("Levels", "lvl20", "Legend", "Reach level 20", lvl, 20),
+    t("Bosses", "ch10", "Chapter chaser", "Finish 10 chapters", chapters, 10),
+    t("Bosses", "ch50", "Bookworm", "Finish 50 chapters", chapters, 50),
+    t("Bosses", "boss", "Boss down", "Finish every chapter of one subject", bossesDown, 1),
+    t("Bosses", "boss3", "Boss slayer", "Finish every chapter of 3 subjects", bossesDown, 3),
+    t("Bosses", "allboss", "Flawless", "Finish every chapter of every subject", subjects.length > 0 && bossesDown === subjects.length ? 1 : 0, 1),
+    t("Cards & revision", "cards25", "Card collector", "Have 25 flashcards", cards.length, 25),
+    t("Cards & revision", "master10", "Card master", "Master 10 flashcards (box 4 or higher)", mastered, 10),
+    t("Cards & revision", "rev5", "Remember me", "Finish 5 revision rounds", revisions, 5),
+    t("Cards & revision", "rev25", "Memory palace", "Finish 25 revision rounds", revisions, 25),
+    t("Cards & revision", "cycle", "Full cycle", "Revise one chapter all 3 times (1, 3 and 7 days later)", fullCycle ? 1 : 0, 1),
+    t("Quizzes", "quiz", "Quiz whiz", "Earn 50 XP from AI quizzes", progress.quizXp ?? 0, 50),
+    t("Quizzes", "right25", "Sharpshooter", "Get 25 quiz questions right", quizRight, 25),
+    t("Quizzes", "right100", "Mastermind", "Get 100 quiz questions right", quizRight, 100),
+    t("Quizzes", "perfect", "Perfectionist", "Answer 5+ questions on one topic with no mistakes", perfectTopic ? 1 : 0, 1),
+    t("Special", "early", "Early bird", "Finish a session that starts before 8:00", all.some((q) => isEarly(q.start)) ? 1 : 0, 1),
+    t("Special", "owl", "Night owl", "Finish a session that starts between 21:00 and 04:00", all.some((q) => isLate(q.start)) ? 1 : 0, 1),
+    t("Special", "weekend", "Weekend warrior", "Study on both Saturday and Sunday of a weekend", weekendBoth ? 1 : 0, 1),
+    t("Special", "steady", "Steady learner", "Finish 10 sessions of a subject with no deadline", steadyDone, 10),
   ];
+}
+
+// Longest run of days in a row with at least one finished session (ever)
+export function bestStreak(progress) {
+  const dates = Object.keys(progress.done).filter((d) => progress.done[d]?.length).sort();
+  let best = 0;
+  let run = 0;
+  let prev = null;
+  for (const d of dates) {
+    run = prev && toISODate(addDays(new Date(prev + "T12:00:00"), 1)) === d ? run + 1 : 1;
+    best = Math.max(best, run);
+    prev = d;
+  }
+  return Math.max(best, streak(progress));
+}
+
+// Studied again after a gap of 3 or more days with nothing done
+function comebackAfterBreak(progress) {
+  const dates = Object.keys(progress.done).filter((d) => progress.done[d]?.length).sort();
+  for (let i = 1; i < dates.length; i++) {
+    const gap = Math.round((new Date(dates[i] + "T12:00:00") - new Date(dates[i - 1] + "T12:00:00")) / 86400000);
+    if (gap > 3) return true;
+  }
+  return false;
+}
+
+// Some chapter has had all 3 revision rounds done
+function fullRevisionCycle(progress) {
+  const count = {};
+  for (const key of progress.revDone ?? []) {
+    const chapter = key.split("|").slice(0, 3).join("|");
+    count[chapter] = (count[chapter] ?? 0) + 1;
+    if (count[chapter] >= REVISION_STEPS.length) return true;
+  }
+  return false;
 }
 
 // ─────────────────────────────────────────────────────────────

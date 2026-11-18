@@ -50,8 +50,13 @@ function region() {
   return lang.split("-")[1]?.toUpperCase() || lang || "unknown";
 }
 
+// "CS301", "MA 102", "ICS-211A" look like course codes; "Calculus II" doesn't
+export const looksLikeCode = (x) => /^[A-Za-z]{2,5}\s?-?\d{2,4}[A-Za-z]?$/.test((x ?? "").trim());
+
 // Builds the review rows from what the AI found
 export function buildRows(syllabus, exams, existing, today = toISODate(new Date())) {
+  // "CS301" with no separate code: the subject IS the code
+  exams = exams.map((e) => (!e.code && looksLikeCode(e.subject) ? { ...e, code: e.subject } : e));
   // For each subject keep only its NEXT exam (a timetable can list midterms and finals)
   const upcoming = exams.filter((e) => e.date >= today).sort((a, b) => a.date.localeCompare(b.date));
   const nextExams = [];
@@ -60,13 +65,19 @@ export function buildRows(syllabus, exams, existing, today = toISODate(new Date(
   const rows = syllabus.map((s) => ({ name: s.name, code: s.code, units: s.units, exam: null }));
   for (const e of nextExams) {
     const row = rows.find((r) => !r.exam && sameSubject(r, e));
-    if (row) row.exam = e;
-    else rows.push({ name: e.name, code: e.code, units: [], exam: e });
+    if (row) {
+      row.exam = e;
+      row.code = row.code || e.code; // the timetable may know the code when the syllabus doesn't
+    } else rows.push({ name: e.name, code: e.code, units: [], exam: e });
   }
+  // Same subject written two ways? Use the way the uploaded timetable mostly writes them
+  const codeLike = exams.filter((e) => looksLikeCode(e.subject)).length;
+  const naming = exams.length && codeLike > exams.length / 2 ? "code" : "name";
   const pastOnly = exams.length > 0 && upcoming.length === 0;
 
   return {
     pastOnly,
+    naming,
     rows: rows.map((r) => {
       const match = existing.find((x) => sameSubject(x, r));
       const topicCount = r.units.reduce((n, u) => n + u.topics.length, 0);
@@ -79,6 +90,9 @@ export function buildRows(syllabus, exams, existing, today = toISODate(new Date(
         examDate: r.exam?.date ?? match?.examDate ?? "",
         examTime: r.exam?.time ?? (r.exam ? "" : match?.examTime ?? ""),
         chapters: match?.totalChapters ?? 8,
+        code: r.code || match?.code || "",
+        // Only you know how hard a subject is for you, so new ones start unpicked
+        difficulty: match?.difficulty ?? null,
       };
     }),
   };
@@ -102,6 +116,7 @@ export default function StudyImport({ existing, aiState, onApply, onClose }) {
   const [error, setError] = useState("");
   const [notes, setNotes] = useState([]);
   const [rows, setRows] = useState(null); // review step
+  const [naming, setNaming] = useState("name"); // write subjects as their "name" or course "code"
 
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && !loading && onClose();
@@ -146,12 +161,16 @@ export default function StudyImport({ existing, aiState, onApply, onClose }) {
       return;
     }
     setNotes(problems);
+    setNaming(built.naming);
     setRows(built.rows);
   }
 
   function update(i, patch) {
     setRows(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   }
+
+  // One style for every subject: all names, or all course codes (when known)
+  const shown = (r) => (naming === "code" && r.code ? r.code : r.name).slice(0, 40);
 
   function apply() {
     let colorIndex = existing.length;
@@ -160,19 +179,20 @@ export default function StudyImport({ existing, aiState, onApply, onClose }) {
       const names = chapterNames(r).filter(Boolean);
       const when = { examDate: r.examDate || "", examTime: r.examDate && r.examTime ? r.examTime : undefined };
       if (r.match) {
-        if (!names.length) return { ...r.match, ...when }; // only the date changed
+        const same = { name: shown(r), code: r.code || r.match.code, difficulty: r.difficulty };
+        if (!names.length) return { ...r.match, ...when, ...same }; // only the date changed
         // Keep ticks on chapters with the same name
         const wasDone = new Set((r.match.topics ?? []).filter((t) => t.done).map((t) => t.name.toLowerCase()));
         // No chapter names before, just a count? Then the first N chapters count as done.
         const firstN = r.match.topics?.length ? 0 : r.match.chaptersDone ?? 0;
-        return { ...r.match, ...when, topics: names.map((n, k) => ({ name: n, done: wasDone.has(n.toLowerCase()) || k < firstN })) };
+        return { ...r.match, ...when, ...same, topics: names.map((n, k) => ({ name: n, done: wasDone.has(n.toLowerCase()) || k < firstN })) };
       }
       const base = {
         id: crypto.randomUUID(),
-        // Full name if it fits; very long names fall back to the course code
-        name: (r.code && r.name.length > 40 ? r.code : r.name).slice(0, 40),
+        name: shown(r),
+        code: r.code || undefined,
         ...when,
-        difficulty: 3,
+        difficulty: r.difficulty,
         color: inkFor(colorIndex++),
       };
       return names.length
@@ -184,6 +204,8 @@ export default function StudyImport({ existing, aiState, onApply, onClose }) {
   }
 
   const count = rows?.filter((r) => r.include).length ?? 0;
+  const needDifficulty = rows?.filter((r) => r.include && !r.difficulty).length ?? 0;
+  const anyCodes = rows?.some((r) => r.code) ?? false;
 
   return (
     <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && !loading && onClose()}>
@@ -260,8 +282,22 @@ export default function StudyImport({ existing, aiState, onApply, onClose }) {
           <>
             <p className="muted small-gap">
               Found {rows.length} subject{rows.length === 1 ? "" : "s"}. Untick what you don't want and fix any date that looks
-              wrong. Leave the date empty for something with no exam.
+              wrong. Leave the date empty for something with no exam. Pick how hard each one is <b>for you</b>.
             </p>
+            {anyCodes && (
+              <div className="imp-naming">
+                <span>Write subjects as</span>
+                <div className="seg" role="radiogroup" aria-label="Write subjects as">
+                  <button role="radio" aria-checked={naming === "name"} className={naming === "name" ? "on" : ""} onClick={() => setNaming("name")}>
+                    Names
+                  </button>
+                  <button role="radio" aria-checked={naming === "code"} className={naming === "code" ? "on" : ""} onClick={() => setNaming("code")}>
+                    Course codes
+                  </button>
+                </div>
+                <small className="muted">Everything (bosses, quests, timetable) uses the same style.</small>
+              </div>
+            )}
             {notes.map((n) => (
               <p key={n} className="info-note">
                 {n}
@@ -275,12 +311,23 @@ export default function StudyImport({ existing, aiState, onApply, onClose }) {
                     <label className="syl-pick">
                       <input type="checkbox" checked={r.include} onChange={(e) => update(i, { include: e.target.checked })} />
                       <span className="syl-name">
-                        {r.name}
-                        {r.code && <small> {r.code}</small>}
+                        {shown(r)}
+                        {r.code && r.code !== shown(r) && <small> {r.code}</small>}
+                        {r.code && r.code === shown(r) && r.name !== r.code && <small> {r.name}</small>}
                         {r.exam?.kind && <small> {r.exam.kind}</small>}
                       </span>
                     </label>
                     <span className={`syl-tag ${r.match ? "is-update" : ""}`}>{r.match ? `Updates your ${r.match.name}` : "New boss"}</span>
+                    <div className="syl-controls imp-diff">
+                      <span className="muted">How hard for you?</span>
+                      <div className="scale small-scale" role="radiogroup" aria-label={`How hard is ${shown(r)} for you`}>
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <button key={n} role="radio" aria-checked={r.difficulty === n} className={r.difficulty === n ? "on" : ""} onClick={() => update(i, { difficulty: n })}>
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <div className="syl-controls">
                       <label className="syl-date">
                         <span>Exam</span>
@@ -345,7 +392,8 @@ export default function StudyImport({ existing, aiState, onApply, onClose }) {
               <button className="btn btn-ghost" onClick={onClose}>
                 Cancel
               </button>
-              <button className="btn btn-primary" onClick={apply} disabled={count === 0}>
+              {needDifficulty > 0 && <span className="muted imp-need">Pick how hard {needDifficulty === 1 ? "1 more subject is" : `${needDifficulty} more subjects are`}</span>}
+              <button className="btn btn-primary" onClick={apply} disabled={count === 0 || needDifficulty > 0}>
                 Add {count} subject{count === 1 ? "" : "s"}
               </button>
             </div>
