@@ -2,6 +2,7 @@
 // one tap on Android/laptops, and the Share -> Add to Home Screen steps on iPhone.
 import { useEffect, useState } from "react";
 import { installMode, onInstallChange, promptInstall } from "../utils/install.js";
+import { getSetting, setSetting } from "../utils/alerts.js";
 
 export function useInstallMode() {
   const [mode, setMode] = useState(() => installMode());
@@ -74,5 +75,40 @@ function ShareIcon() {
       <path d="M8 1.5v8M5.2 4.2 8 1.5l2.8 2.7" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M4.5 6.5H3.5v8h9v-8h-1" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+// A banner right under the player bar: "Get Cramwise on your home screen".
+// "Not now" hides it for a week (it comes back, because it's easy to miss).
+const SNOOZE_DAYS = 7;
+export function InstallBanner() {
+  const mode = useInstallMode();
+  const [steps, setSteps] = useState(false);
+  const [snoozedUntil, setSnoozedUntil] = useState(() => getSetting("cramwise-install-snooze", 0));
+  if (!mode || Date.now() < snoozedUntil) return null;
+  function snooze() {
+    const until = Date.now() + SNOOZE_DAYS * 86400000;
+    setSetting("cramwise-install-snooze", until);
+    setSnoozedUntil(until);
+  }
+  return (
+    <div className="install-banner" role="region" aria-label="Install the app">
+      <span className="install-banner-icon" aria-hidden="true">
+        <PhoneIcon />
+      </span>
+      <div className="install-banner-text">
+        <b>Get the Cramwise app</b>
+        <span>Opens from your home screen, full screen, and works with bad internet.</span>
+      </div>
+      <div className="install-banner-actions">
+        <button className="btn btn-primary btn-small" onClick={() => (mode === "ios" ? setSteps(true) : promptInstall())}>
+          Install
+        </button>
+        <button className="link-btn" onClick={snooze}>
+          Not now
+        </button>
+      </div>
+      {steps && <IosSteps onClose={() => setSteps(false)} />}
+    </div>
   );
 }

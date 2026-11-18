@@ -19,8 +19,7 @@ import StudyImport from "./StudyImport.jsx";
 import Cards from "./Cards.jsx";
 import Friends from "./Friends.jsx";
 import Appearance from "./Appearance.jsx";
-import { IosSteps, useInstallMode } from "./InstallButton.jsx";
-import { promptInstall } from "../utils/install.js";
+import { InstallBanner } from "./InstallButton.jsx";
 import { ExamWeek, Revisions } from "./StudyExtras.jsx";
 import FocusTimer, { TIMER_KEY } from "./FocusTimer.jsx";
 import { PlanAdvice, StudyHelper, QuizMe } from "./AiTools.jsx";
@@ -47,8 +46,6 @@ export default function Dashboard(props) {
   const { onCompleteQuest, onToggleTopic, onSaveSubject, onDeleteSubject, onSkipMissed, onQuizXp, onUpdatePrefs } = props;
   const { onQuizAnswer, onRevisionDone, onAddCards, onReviewCard, onDeleteCard, look, onSetLook } = props;
   const [lookOpen, setLookOpen] = useState(false);
-  const [iosOpen, setIosOpen] = useState(false);
-  const installMode = useInstallMode();
   const [quizPreset, setQuizPreset] = useState(null); // { subjectId, topic, n } from "Quick quiz"
   const { userName, subjects, prefs, progress } = data;
   const [tab, setTab] = useState(() => getSetting("cramwise-tab", "today"));
@@ -197,9 +194,6 @@ export default function Dashboard(props) {
     { label: "Change my timetable", hint: "Day off, busy hours, study hours", onClick: () => setTab("week") },
     { label: "Edit full setup", hint: "Name, subjects, week, study hours", onClick: onEdit },
     { label: "Appearance", hint: "Dark, light, accent colour", onClick: () => setLookOpen(true) },
-    ...(installMode
-      ? [{ label: "Install app", hint: "Add Cramwise to your home screen", onClick: () => (installMode === "ios" ? setIosOpen(true) : promptInstall()) }]
-      : []),
     { label: reminders ? "Turn off session reminders" : "Turn on session reminders", hint: "Pop-up 5 min before each quest", onClick: toggleReminders },
     { divider: true, key: "d0" },
     { label: "Download timetable PDF", onClick: () => exportTimetablePDF({ userName, subjects, timetable: shownTimetable }) },
@@ -222,6 +216,7 @@ export default function Dashboard(props) {
   return (
     <div className="dash">
       <Hud name={userName} progress={progress} menuItems={menuItems} />
+      <InstallBanner />
       <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={onLoadFile} />
       {fileMsg && (
         <p className="banner" role="status">
@@ -377,7 +372,6 @@ export default function Dashboard(props) {
         />
       )}
 
-      {iosOpen && <IosSteps onClose={() => setIosOpen(false)} />}
       {lookOpen && <Appearance look={look} onChange={onSetLook} onClose={() => setLookOpen(false)} />}
 
       {syllabusOpen && (
