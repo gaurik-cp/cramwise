@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Privacy – Cramwise</title>
+<link rel="icon" type="image/png" href="/icons/favicon-64.png" />
+<style>
+  :root { --bg: #110f1e; --panel: #1b1830; --line: #322d57; --text: #f3f0ff; --muted: #a39dc9; --xp: #b8ff3c; }
+  @media (prefers-color-scheme: light) { :root { --bg: #f3f1fb; --panel: #ffffff; --line: #d9d3ef; --text: #1b1830; --muted: #5d5785; --xp: #4c8a00; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 "Segoe UI", system-ui, sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 1.8rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 28px 0 6px; }
+  p, li { color: var(--text); }
+  .muted { color: var(--muted); }
+  .card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 4px 20px 16px; margin-top: 20px; }
+  a { color: var(--xp); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Cramwise privacy policy</h1>
+  <p class="muted">Last updated 18 November 2026</p>
+  <p>Cramwise is a free study planner made by Gauri Krishnan as a student project. This page explains, in plain words, what it keeps about you and why.</p>
+
+  <div class="card">
+    <h2>What Cramwise stores</h2>
+    <ul>
+      <li><b>From Google sign-in:</b> your name, email address, profile picture and Google's account ID. Nothing else from your Google account is read.</li>
+      <li><b>Your study plan:</b> subjects, exam dates, chapters, timetable, study settings, XP, streaks, flashcards and quiz scores.</li>
+      <li><b>A daily count</b> of how many AI requests you made, so the free limit can be applied.</li>
+      <li><b>A login cookie</b> so you stay signed in. There are no advertising or tracking cookies.</li>
+    </ul>
+    <p>If you use Cramwise <b>without an account</b>, your plan stays only in your own browser and nothing is sent to the server.</p>
+
+    <h2>The AI features</h2>
+    <p>When you use an AI feature (reading a timetable or syllabus, quizzes, flashcards, the study helper or plan advice), the text or file you give it is sent to Google's Gemini service to produce the answer. Cramwise does not keep the files you upload. Google's handling of that data is covered by Google's own terms.</p>
+
+    <h2>Friends</h2>
+    <p>If you add friends with a friend code, they can see only your first name, level, XP for the week and streaks. They never see your email or your plan.</p>
+
+    <h2>What Cramwise never does</h2>
+    <ul>
+      <li>It never sells or shares your data with advertisers.</li>
+      <li>It never posts anything to your Google account.</li>
+    </ul>
+
+    <h2>Where it's kept</h2>
+    <p>Data is stored on the server that hosts Cramwise (PythonAnywhere). Connections are encrypted with HTTPS.</p>
+
+    <h2>Deleting your data</h2>
+    <p>Use <b>Menu, Start over</b> in the app to clear your plan. To have your whole account deleted, open an issue at <a href="https://github.com/gaurik-cp/cramwise/issues">github.com/gaurik-cp/cramwise/issues</a> and it will be removed.</p>
+  </div>
+
+  <p><a href="/">Back to Cramwise</a></p>
+</main>
+</body>
+</html>
