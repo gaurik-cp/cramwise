@@ -9,6 +9,7 @@ import "@fontsource/rubik/400.css"; // rounded, friendly body text
 import "@fontsource/rubik/500.css";
 import "@fontsource/rubik/700.css";
 import "./index.css";
+import "./utils/install.js"; // listens for "you can install this app" straight away
 
 // Phone-app mode: the service worker caches the app so it opens offline.
 // Only in the built app; in development it would serve stale files.

@@ -1,5 +1,6 @@
 // Sign-in screen: Google button, or use the app without an account.
 import { useEffect, useRef, useState } from "react";
+import InstallButton from "./InstallButton.jsx";
 import { api, loadGoogleScript } from "../utils/api.js";
 
 export default function Login({ config, serverDown, onSignedIn, onUseLocal }) {
@@ -101,6 +102,7 @@ export default function Login({ config, serverDown, onSignedIn, onUseLocal }) {
               <span className="hint">Your progress stays only in this browser, and the AI coach is off.</span>
             </div>
           </div>
+          <InstallButton className="btn btn-ghost landing-install" label="Install the app" />
           <p className="landing-facts">
             <span>Free</span>
             <span>Works on your phone</span>
