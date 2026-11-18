@@ -96,6 +96,9 @@ export default function Login({ config, serverDown, onSignedIn, onUseLocal }) {
           <span className="hint">Your progress stays only in this browser, and the AI coach is off.</span>
         </div>
       </div>
+      <p className="hint login-privacy">
+        <a href="/privacy.html">Privacy: what Cramwise stores about you</a>
+      </p>
     </section>
   );
 }
