@@ -3,7 +3,7 @@
 //   - The app's own files (HTML, JS, CSS, fonts, icons) are cached.
 //   - Anything under /api is NEVER cached: your plan always comes from the server.
 //   - Pages: try the network first (so updates arrive), fall back to the cache offline.
-const CACHE = "cramwise-v1";
+const CACHE = "cramwise-v2"; // bump this when icons or files change, so phones fetch the new ones
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/manifest.webmanifest", "/icons/icon-192.png"])));
